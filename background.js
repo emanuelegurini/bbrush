@@ -1,5 +1,3 @@
-const activeOverlayTabs = new Set();
-
 function sendTabMessage(tabId, message) {
   return new Promise((resolve) => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
@@ -20,6 +18,27 @@ async function ensureContentScript(tabId) {
   });
 }
 
+async function getOverlayStatus(tabId) {
+  const response = await sendTabMessage(tabId, { type: 'BBRUSH_GET_STATUS' });
+  return Boolean(response && response.overlayEnabled);
+}
+
+async function activateOverlay(tabId) {
+  try {
+    await ensureContentScript(tabId);
+  } catch {
+    return { ok: false, error: 'unsupported_url' };
+  }
+
+  const response = await sendTabMessage(tabId, { type: 'BBRUSH_ENABLE_OVERLAY' });
+
+  if (!response) {
+    return { ok: false, error: 'injection_failed' };
+  }
+
+  return { ok: true };
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || message.type !== 'POPUP_TOGGLE_OVERLAY' || typeof message.tabId !== 'number') {
     return;
@@ -28,27 +47,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const { tabId } = message;
 
   (async () => {
-    let isActive = activeOverlayTabs.has(tabId);
+    const isActive = await getOverlayStatus(tabId);
 
-    if (!isActive) {
-      await ensureContentScript(tabId);
-      await sendTabMessage(tabId, { type: 'BBRUSH_ENABLE_OVERLAY' });
-      activeOverlayTabs.add(tabId);
-      isActive = true;
-    } else {
+    if (isActive) {
       await sendTabMessage(tabId, { type: 'BBRUSH_DISABLE_OVERLAY' });
-      activeOverlayTabs.delete(tabId);
-      isActive = false;
+      sendResponse({ ok: true, active: false });
+      return;
     }
 
-    sendResponse({ active: isActive });
+    const activation = await activateOverlay(tabId);
+
+    if (!activation.ok) {
+      sendResponse({ ok: false, error: activation.error });
+      return;
+    }
+
+    sendResponse({ ok: true, active: true });
   })();
 
   return true;
-});
-
-chrome.tabs.onRemoved.addListener((tabId) => {
-  activeOverlayTabs.delete(tabId);
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
@@ -64,10 +81,14 @@ chrome.commands.onCommand.addListener(async (command) => {
 
   const tabId = activeTab.id;
 
-  if (!activeOverlayTabs.has(tabId)) {
-    await ensureContentScript(tabId);
-    await sendTabMessage(tabId, { type: 'BBRUSH_ENABLE_OVERLAY' });
-    activeOverlayTabs.add(tabId);
+  const isActive = await getOverlayStatus(tabId);
+
+  if (!isActive) {
+    const activation = await activateOverlay(tabId);
+
+    if (!activation.ok) {
+      return;
+    }
   }
 
   await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_DRAWING_MODE' });
