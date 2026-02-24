@@ -267,6 +267,10 @@
       state.textEditor.element.remove();
     }
 
+    const canvasRect = state.canvas.getBoundingClientRect();
+    const viewportX = canvasRect.left + point.x;
+    const viewportY = canvasRect.top + point.y;
+
     const editorColor = state.brushColor;
     const editorFontSize = getTextFontSize();
     const input = document.createElement('input');
@@ -274,9 +278,9 @@
     input.type = 'text';
     input.placeholder = 'Type text';
     input.style.position = 'fixed';
-    input.style.left = `${point.x}px`;
-    input.style.top = `${point.y}px`;
-    input.style.zIndex = '2147483648';
+    input.style.left = `${viewportX}px`;
+    input.style.top = `${viewportY}px`;
+    input.style.zIndex = '2147483647';
     input.style.color = editorColor;
     input.style.fontSize = `${editorFontSize}px`;
     input.style.fontFamily = 'Arial, sans-serif';
@@ -600,6 +604,8 @@
     if (state.activeTool !== 'text') {
       return;
     }
+
+    event.preventDefault();
 
     const selected = getSelectedTextEntry();
     if (selected) {
