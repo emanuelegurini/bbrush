@@ -10,6 +10,9 @@
     toolbarHost: null,
     toolbarShadowRoot: null,
     toolbarElements: null,
+    dragOffsetX: 0,
+    dragOffsetY: 0,
+    isDraggingToolbar: false,
     isDrawingMode: false,
     isPointerDown: false,
     brushColor: '#000000',
@@ -188,6 +191,7 @@
     const shadowRoot = host.attachShadow({ mode: 'open' });
     shadowRoot.innerHTML = `
       <div class="bbrush-toolbar">
+        <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
         <button data-role="toggle">Start drawing</button>
         <button data-role="undo">Undo</button>
         <button data-role="clear">Clear</button>
@@ -199,9 +203,34 @@
     stylesheet.href = chrome.runtime.getURL('toolbar.css');
     shadowRoot.prepend(stylesheet);
 
+    const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
     const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
+
+    dragHandle.addEventListener('pointerdown', (event) => {
+      state.isDraggingToolbar = true;
+      state.dragOffsetX = event.clientX - state.toolbarHost.offsetLeft;
+      state.dragOffsetY = event.clientY - state.toolbarHost.offsetTop;
+      dragHandle.setPointerCapture(event.pointerId);
+    });
+
+    dragHandle.addEventListener('pointermove', (event) => {
+      if (!state.isDraggingToolbar) {
+        return;
+      }
+
+      const left = event.clientX - state.dragOffsetX;
+      const top = event.clientY - state.dragOffsetY;
+
+      state.toolbarHost.style.left = `${Math.max(0, left)}px`;
+      state.toolbarHost.style.top = `${Math.max(0, top)}px`;
+    });
+
+    dragHandle.addEventListener('pointerup', (event) => {
+      state.isDraggingToolbar = false;
+      dragHandle.releasePointerCapture(event.pointerId);
+    });
 
     toggleButton.addEventListener('click', () => {
       toggleDrawingMode();
