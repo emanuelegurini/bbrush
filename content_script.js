@@ -127,6 +127,20 @@
     }
   }
 
+  function handleKeyDown(event) {
+    const undoPressed = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z';
+
+    if (!undoPressed || !state.enabled) {
+      return;
+    }
+
+    const changed = undoLastStroke();
+
+    if (changed) {
+      event.preventDefault();
+    }
+  }
+
   function createCanvas() {
     const canvas = document.createElement('canvas');
     canvas.id = 'bbrush-canvas';
@@ -227,6 +241,8 @@
       sendResponse({ ok: true });
     }
   });
+
+  document.addEventListener('keydown', handleKeyDown);
 
   window.__BBRUSH__ = {
     enableOverlay,
