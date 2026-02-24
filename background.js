@@ -40,11 +40,24 @@ async function activateOverlay(tabId) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (!message || message.type !== 'POPUP_TOGGLE_OVERLAY' || typeof message.tabId !== 'number') {
+  if (!message || typeof message.type !== 'string' || typeof message.tabId !== 'number') {
     return;
   }
 
   const { tabId } = message;
+
+  if (message.type === 'POPUP_GET_STATUS') {
+    (async () => {
+      const isActive = await getOverlayStatus(tabId);
+      sendResponse({ ok: true, active: isActive });
+    })();
+
+    return true;
+  }
+
+  if (message.type !== 'POPUP_TOGGLE_OVERLAY') {
+    return;
+  }
 
   (async () => {
     const isActive = await getOverlayStatus(tabId);
