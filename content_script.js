@@ -18,6 +18,7 @@
     isPointerDown: false,
     brushColor: '#000000',
     brushSize: 4,
+    isSizeExpanded: false,
     currentStroke: null,
     strokes: []
   };
@@ -233,6 +234,8 @@
     state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
 
     state.toolbarElements.toolbar.classList.toggle('is-drawing', state.isDrawingMode);
+    state.toolbarElements.sizeField.classList.toggle('is-expanded', state.isSizeExpanded);
+    state.toolbarElements.sizeToggle.textContent = state.isSizeExpanded ? 'Size -' : 'Size +';
 
     if (state.canvas) {
       state.canvas.style.boxShadow = state.isDrawingMode
@@ -266,7 +269,8 @@
           <span>Color</span>
           <input data-role="color" type="color" value="#000000" />
         </label>
-        <label class="bbrush-toolbar-field">
+        <button data-role="size-toggle">Size +</button>
+        <label class="bbrush-toolbar-field bbrush-toolbar-size" data-role="size-field">
           <span>Size</span>
           <input data-role="size" type="range" min="1" max="24" value="4" />
         </label>
@@ -285,6 +289,8 @@
 
     const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
     const colorInput = shadowRoot.querySelector('[data-role="color"]');
+    const sizeToggle = shadowRoot.querySelector('[data-role="size-toggle"]');
+    const sizeField = shadowRoot.querySelector('[data-role="size-field"]');
     const sizeInput = shadowRoot.querySelector('[data-role="size"]');
     const drawButton = shadowRoot.querySelector('[data-role="tool-brush"]');
     const textButton = shadowRoot.querySelector('[data-role="tool-text"]');
@@ -299,6 +305,11 @@
 
     sizeInput.addEventListener('input', () => {
       state.brushSize = Number(sizeInput.value);
+    });
+
+    sizeToggle.addEventListener('click', () => {
+      state.isSizeExpanded = !state.isSizeExpanded;
+      updateToolbarState();
     });
 
     drawButton.addEventListener('click', () => {
@@ -351,6 +362,8 @@
     state.toolbarShadowRoot = shadowRoot;
     state.toolbarElements = {
       colorInput,
+      sizeToggle,
+      sizeField,
       sizeInput,
       drawButton,
       textButton,
