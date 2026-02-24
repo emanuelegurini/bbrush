@@ -61,11 +61,6 @@
       return;
     }
 
-    state.context.fillStyle = color;
-    state.context.font = `${fontSize}px Arial, sans-serif`;
-    state.context.textBaseline = 'top';
-    state.context.fillText(text, point.x, point.y);
-
     state.strokes.push({
       type: 'text',
       text,
@@ -74,6 +69,8 @@
       color,
       fontSize
     });
+
+    replayStrokes();
   }
 
   function openTextEditorAt(point) {
@@ -90,7 +87,7 @@
     input.style.position = 'fixed';
     input.style.left = `${point.x}px`;
     input.style.top = `${point.y}px`;
-    input.style.zIndex = '2147483647';
+    input.style.zIndex = '2147483648';
     input.style.color = editorColor;
     input.style.fontSize = `${editorFontSize}px`;
     input.style.fontFamily = 'Arial, sans-serif';
@@ -207,12 +204,6 @@
       return;
     }
 
-    if (state.activeTool === 'text') {
-      const point = getCanvasPoint(event);
-      openTextEditorAt(point);
-      return;
-    }
-
     if (state.activeTool !== 'brush') {
       return;
     }
@@ -226,6 +217,15 @@
     };
 
     replayStrokes();
+  }
+
+  function handleCanvasClick(event) {
+    if (!state.enabled || !state.isDrawingMode || state.activeTool !== 'text') {
+      return;
+    }
+
+    const point = getCanvasPoint(event);
+    openTextEditorAt(point);
   }
 
   function handlePointerMove(event) {
@@ -340,6 +340,7 @@
     canvas.addEventListener('pointermove', handlePointerMove);
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointerleave', handlePointerUp);
+    canvas.addEventListener('click', handleCanvasClick);
 
     state.canvas = canvas;
     state.context = canvas.getContext('2d');
@@ -587,6 +588,11 @@
     if (message.type === 'BBRUSH_CLEAR_ALL') {
       clearAllStrokes();
       sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === 'BBRUSH_GET_STATUS') {
+      sendResponse({ ok: true, overlayEnabled: state.enabled, drawingMode: state.isDrawingMode });
     }
   });
 
@@ -598,10 +604,3 @@
     disableOverlay
   };
 })();
-drawButton.addEventListener('click', () => {
-  setActiveTool('brush');
-});
-
-textButton.addEventListener('click', () => {
-  setActiveTool('text');
-});
