@@ -598,10 +598,10 @@
     disableOverlay
   };
 })();
-    drawButton.addEventListener('click', () => {
-      setActiveTool('brush');
-    });
+drawButton.addEventListener('click', () => {
+  setActiveTool('brush');
+});
 
-    textButton.addEventListener('click', () => {
-      setActiveTool('text');
-    });
+textButton.addEventListener('click', () => {
+  setActiveTool('text');
+});
