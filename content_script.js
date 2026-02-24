@@ -11,7 +11,9 @@
     isPointerDown: false,
     brushColor: '#000000',
     brushSize: 4,
-    previousPoint: null
+    previousPoint: null,
+    currentStroke: null,
+    strokes: []
   };
 
   function getCanvasPoint(event) {
@@ -44,6 +46,11 @@
 
     state.isPointerDown = true;
     state.previousPoint = getCanvasPoint(event);
+    state.currentStroke = {
+      color: state.brushColor,
+      size: state.brushSize,
+      points: [state.previousPoint]
+    };
   }
 
   function handlePointerMove(event) {
@@ -57,12 +64,58 @@
       drawSegment(state.previousPoint, point);
     }
 
+    if (state.currentStroke) {
+      state.currentStroke.points.push(point);
+    }
+
     state.previousPoint = point;
   }
 
   function handlePointerUp() {
+    if (state.currentStroke && state.currentStroke.points.length > 0) {
+      state.strokes.push(state.currentStroke);
+    }
+
+    state.currentStroke = null;
     state.isPointerDown = false;
     state.previousPoint = null;
+  }
+
+  function replayStrokes() {
+    if (!state.canvas || !state.context) {
+      return;
+    }
+
+    state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
+
+    for (const stroke of state.strokes) {
+      if (stroke.points.length < 2) {
+        continue;
+      }
+
+      state.context.strokeStyle = stroke.color;
+      state.context.lineWidth = stroke.size;
+      state.context.lineCap = 'round';
+      state.context.lineJoin = 'round';
+      state.context.beginPath();
+      state.context.moveTo(stroke.points[0].x, stroke.points[0].y);
+
+      for (let i = 1; i < stroke.points.length; i += 1) {
+        state.context.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
+
+      state.context.stroke();
+    }
+  }
+
+  function undoLastStroke() {
+    if (state.strokes.length === 0) {
+      return false;
+    }
+
+    state.strokes.pop();
+    replayStrokes();
+    return true;
   }
 
   function createCanvas() {
@@ -151,6 +204,12 @@
     if (message.type === 'BBRUSH_TOGGLE_DRAWING_MODE') {
       const active = toggleDrawingMode();
       sendResponse({ ok: true, drawingMode: active });
+      return;
+    }
+
+    if (message.type === 'BBRUSH_UNDO') {
+      const changed = undoLastStroke();
+      sendResponse({ ok: true, changed });
     }
   });
 
