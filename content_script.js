@@ -192,6 +192,10 @@
     shadowRoot.innerHTML = `
       <div class="bbrush-toolbar">
         <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
+        <label class="bbrush-toolbar-field">
+          <span>Color</span>
+          <input data-role="color" type="color" value="#000000" />
+        </label>
         <button data-role="toggle">Start drawing</button>
         <button data-role="undo">Undo</button>
         <button data-role="clear">Clear</button>
@@ -204,9 +208,14 @@
     shadowRoot.prepend(stylesheet);
 
     const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
+    const colorInput = shadowRoot.querySelector('[data-role="color"]');
     const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
+
+    colorInput.addEventListener('input', () => {
+      state.brushColor = colorInput.value;
+    });
 
     dragHandle.addEventListener('pointerdown', (event) => {
       state.isDraggingToolbar = true;
@@ -250,6 +259,7 @@
     state.toolbarHost = host;
     state.toolbarShadowRoot = shadowRoot;
     state.toolbarElements = {
+      colorInput,
       toggleButton,
       undoButton,
       clearButton

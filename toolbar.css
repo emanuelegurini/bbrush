@@ -21,6 +21,23 @@
   user-select: none;
 }
 
+.bbrush-toolbar-field {
+  align-items: center;
+  color: #e2e8f0;
+  display: flex;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.bbrush-toolbar-field input[type='color'] {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  height: 24px;
+  padding: 0;
+  width: 28px;
+}
+
 .bbrush-toolbar button {
   background: #1762a6;
   border: none;
