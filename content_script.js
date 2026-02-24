@@ -50,9 +50,23 @@
     state.context.beginPath();
     state.context.moveTo(stroke.points[0].x, stroke.points[0].y);
 
-    for (let i = 1; i < stroke.points.length; i += 1) {
-      state.context.lineTo(stroke.points[i].x, stroke.points[i].y);
+    if (stroke.points.length === 2) {
+      state.context.lineTo(stroke.points[1].x, stroke.points[1].y);
+      state.context.stroke();
+      return;
     }
+
+    for (let i = 1; i < stroke.points.length - 1; i += 1) {
+      const current = stroke.points[i];
+      const next = stroke.points[i + 1];
+      const midPointX = (current.x + next.x) / 2;
+      const midPointY = (current.y + next.y) / 2;
+      state.context.quadraticCurveTo(current.x, current.y, midPointX, midPointY);
+    }
+
+    const penultimate = stroke.points[stroke.points.length - 2];
+    const last = stroke.points[stroke.points.length - 1];
+    state.context.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
 
     state.context.stroke();
   }
