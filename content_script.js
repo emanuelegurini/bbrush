@@ -20,7 +20,8 @@
     brushSize: 4,
     isSizeExpanded: false,
     currentStroke: null,
-    strokes: []
+    strokes: [],
+    textEditor: null
   };
 
   function getCanvasPoint(event) {
@@ -48,6 +49,43 @@
     return {
       x: totals.x / samples.length,
       y: totals.y / samples.length
+    };
+  }
+
+  function getTextFontSize() {
+    return Math.max(12, state.brushSize * 3);
+  }
+
+  function openTextEditorAt(point) {
+    if (state.textEditor && state.textEditor.element) {
+      state.textEditor.element.remove();
+    }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Type text';
+    input.style.position = 'fixed';
+    input.style.left = `${point.x}px`;
+    input.style.top = `${point.y}px`;
+    input.style.zIndex = '2147483647';
+    input.style.color = state.brushColor;
+    input.style.fontSize = `${getTextFontSize()}px`;
+    input.style.fontFamily = 'Arial, sans-serif';
+    input.style.background = 'rgba(255, 255, 255, 0.92)';
+    input.style.border = '1px solid #1762a6';
+    input.style.borderRadius = '4px';
+    input.style.padding = '2px 4px';
+    input.style.minWidth = '120px';
+
+    document.body.appendChild(input);
+    input.focus();
+
+    state.textEditor = {
+      element: input,
+      x: point.x,
+      y: point.y,
+      color: state.brushColor,
+      fontSize: getTextFontSize()
     };
   }
 
@@ -94,7 +132,17 @@
   }
 
   function handlePointerDown(event) {
-    if (!state.enabled || !state.isDrawingMode || state.activeTool !== 'brush') {
+    if (!state.enabled || !state.isDrawingMode) {
+      return;
+    }
+
+    if (state.activeTool === 'text') {
+      const point = getCanvasPoint(event);
+      openTextEditorAt(point);
+      return;
+    }
+
+    if (state.activeTool !== 'brush') {
       return;
     }
 
