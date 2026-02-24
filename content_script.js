@@ -17,7 +17,6 @@
     isPointerDown: false,
     brushColor: '#000000',
     brushSize: 4,
-    previousPoint: null,
     currentStroke: null,
     strokes: []
   };
@@ -30,18 +29,31 @@
     };
   }
 
-  function drawSegment(from, to) {
-    if (!state.context) {
+  function drawStrokePath(stroke) {
+    if (!state.context || !stroke || stroke.points.length === 0) {
       return;
     }
 
-    state.context.strokeStyle = state.brushColor;
-    state.context.lineWidth = state.brushSize;
+    state.context.strokeStyle = stroke.color;
+    state.context.fillStyle = stroke.color;
+    state.context.lineWidth = stroke.size;
     state.context.lineCap = 'round';
     state.context.lineJoin = 'round';
+
+    if (stroke.points.length === 1) {
+      state.context.beginPath();
+      state.context.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
+      state.context.fill();
+      return;
+    }
+
     state.context.beginPath();
-    state.context.moveTo(from.x, from.y);
-    state.context.lineTo(to.x, to.y);
+    state.context.moveTo(stroke.points[0].x, stroke.points[0].y);
+
+    for (let i = 1; i < stroke.points.length; i += 1) {
+      state.context.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+
     state.context.stroke();
   }
 
@@ -51,12 +63,14 @@
     }
 
     state.isPointerDown = true;
-    state.previousPoint = getCanvasPoint(event);
+    const point = getCanvasPoint(event);
     state.currentStroke = {
       color: state.brushColor,
       size: state.brushSize,
-      points: [state.previousPoint]
+      points: [point]
     };
+
+    replayStrokes();
   }
 
   function handlePointerMove(event) {
@@ -66,15 +80,11 @@
 
     const point = getCanvasPoint(event);
 
-    if (state.previousPoint) {
-      drawSegment(state.previousPoint, point);
-    }
-
     if (state.currentStroke) {
       state.currentStroke.points.push(point);
     }
 
-    state.previousPoint = point;
+    replayStrokes();
   }
 
   function handlePointerUp() {
@@ -84,7 +94,7 @@
 
     state.currentStroke = null;
     state.isPointerDown = false;
-    state.previousPoint = null;
+    replayStrokes();
   }
 
   function replayStrokes() {
@@ -95,22 +105,11 @@
     state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
 
     for (const stroke of state.strokes) {
-      if (stroke.points.length < 2) {
-        continue;
-      }
+      drawStrokePath(stroke);
+    }
 
-      state.context.strokeStyle = stroke.color;
-      state.context.lineWidth = stroke.size;
-      state.context.lineCap = 'round';
-      state.context.lineJoin = 'round';
-      state.context.beginPath();
-      state.context.moveTo(stroke.points[0].x, stroke.points[0].y);
-
-      for (let i = 1; i < stroke.points.length; i += 1) {
-        state.context.lineTo(stroke.points[i].x, stroke.points[i].y);
-      }
-
-      state.context.stroke();
+    if (state.currentStroke) {
+      drawStrokePath(state.currentStroke);
     }
   }
 
