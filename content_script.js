@@ -29,6 +29,26 @@
     };
   }
 
+  function getSmoothedPoint(rawPoint, points) {
+    const sampleSize = 3;
+    const recentPoints = points.slice(-(sampleSize - 1));
+    const samples = [...recentPoints, rawPoint];
+    const totals = samples.reduce(
+      (accumulator, point) => {
+        return {
+          x: accumulator.x + point.x,
+          y: accumulator.y + point.y
+        };
+      },
+      { x: 0, y: 0 }
+    );
+
+    return {
+      x: totals.x / samples.length,
+      y: totals.y / samples.length
+    };
+  }
+
   function drawStrokePath(stroke) {
     if (!state.context || !stroke || stroke.points.length === 0) {
       return;
@@ -95,7 +115,8 @@
     const point = getCanvasPoint(event);
 
     if (state.currentStroke) {
-      state.currentStroke.points.push(point);
+      const smoothedPoint = getSmoothedPoint(point, state.currentStroke.points);
+      state.currentStroke.points.push(smoothedPoint);
     }
 
     replayStrokes();
