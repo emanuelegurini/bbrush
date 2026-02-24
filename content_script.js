@@ -7,6 +7,9 @@
     enabled: false,
     canvas: null,
     context: null,
+    toolbarHost: null,
+    toolbarShadowRoot: null,
+    toolbarElements: null,
     isDrawingMode: false,
     isPointerDown: false,
     brushColor: '#000000',
@@ -164,6 +167,61 @@
     state.context = canvas.getContext('2d');
   }
 
+  function updateToolbarState() {
+    if (!state.toolbarElements) {
+      return;
+    }
+
+    state.toolbarElements.toggleButton.textContent = state.isDrawingMode
+      ? 'Stop drawing'
+      : 'Start drawing';
+  }
+
+  function createToolbar() {
+    const host = document.createElement('div');
+    host.id = 'bbrush-toolbar-host';
+    host.style.left = '24px';
+    host.style.position = 'fixed';
+    host.style.top = '24px';
+    host.style.zIndex = '2147483647';
+
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    shadowRoot.innerHTML = `
+      <div class="bbrush-toolbar">
+        <button data-role="toggle">Start drawing</button>
+        <button data-role="undo">Undo</button>
+        <button data-role="clear">Clear</button>
+      </div>
+    `;
+
+    const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
+    const undoButton = shadowRoot.querySelector('[data-role="undo"]');
+    const clearButton = shadowRoot.querySelector('[data-role="clear"]');
+
+    toggleButton.addEventListener('click', () => {
+      toggleDrawingMode();
+      updateToolbarState();
+    });
+
+    undoButton.addEventListener('click', () => {
+      undoLastStroke();
+    });
+
+    clearButton.addEventListener('click', () => {
+      clearAllStrokes();
+    });
+
+    document.body.appendChild(host);
+
+    state.toolbarHost = host;
+    state.toolbarShadowRoot = shadowRoot;
+    state.toolbarElements = {
+      toggleButton,
+      undoButton,
+      clearButton
+    };
+  }
+
   function enableOverlay() {
     if (state.enabled) {
       return;
@@ -173,8 +231,14 @@
       createCanvas();
     }
 
+    if (!state.toolbarHost) {
+      createToolbar();
+    }
+
     state.canvas.style.display = 'block';
+    state.toolbarHost.style.display = 'block';
     setDrawingMode(false);
+    updateToolbarState();
     state.enabled = true;
   }
 
@@ -185,6 +249,7 @@
 
     setDrawingMode(false);
     state.canvas.style.display = 'none';
+    state.toolbarHost.style.display = 'none';
     state.enabled = false;
   }
 
@@ -204,6 +269,7 @@
     }
 
     setDrawingMode(!state.isDrawingMode);
+    updateToolbarState();
     return state.isDrawingMode;
   }
 
