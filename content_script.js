@@ -3,6 +3,9 @@
     return;
   }
 
+  const ANCHOR_SIZE = 10;
+  const MIN_TEXT_SIZE = 10;
+
   const state = {
     enabled: false,
     canvas: null,
@@ -21,8 +24,44 @@
     isSizeExpanded: false,
     currentStroke: null,
     strokes: [],
-    textEditor: null
+    textEditor: null,
+    selectedTextId: null,
+    interactionMode: 'none',
+    activeAnchor: null,
+    interactionPointerId: null,
+    interactionStartPoint: null,
+    interactionStartText: null,
+    history: [],
+    nextTextId: 1
   };
+
+  function cloneStrokes(strokes) {
+    return JSON.parse(JSON.stringify(strokes));
+  }
+
+  function ensureHistoryInitialized() {
+    if (state.history.length === 0) {
+      state.history.push(cloneStrokes(state.strokes));
+    }
+  }
+
+  function pushHistorySnapshot() {
+    ensureHistoryInitialized();
+    state.history.push(cloneStrokes(state.strokes));
+    if (state.history.length > 100) {
+      state.history.shift();
+    }
+  }
+
+  function recomputeNextTextId() {
+    let maxId = 0;
+    for (const entry of state.strokes) {
+      if (entry.type === 'text' && typeof entry.id === 'number' && entry.id > maxId) {
+        maxId = entry.id;
+      }
+    }
+    state.nextTextId = maxId + 1;
+  }
 
   function getCanvasPoint(event) {
     const rect = state.canvas.getBoundingClientRect();
@@ -56,20 +95,170 @@
     return Math.max(12, state.brushSize * 3);
   }
 
+  function measureTextBounds(text, fontSize) {
+    if (!state.context) {
+      return { width: 0, height: fontSize };
+    }
+
+    state.context.font = `${fontSize}px Arial, sans-serif`;
+    const metrics = state.context.measureText(text);
+    const width = Math.max(1, metrics.width);
+    const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
+    const descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
+
+    return {
+      width,
+      height: Math.max(fontSize, ascent + descent)
+    };
+  }
+
+  function updateTextBounds(textEntry) {
+    if (!textEntry || textEntry.type !== 'text') {
+      return;
+    }
+
+    const bounds = measureTextBounds(textEntry.text, textEntry.fontSize);
+    textEntry.width = bounds.width;
+    textEntry.height = bounds.height;
+  }
+
+  function getTextBounds(textEntry) {
+    return {
+      left: textEntry.x,
+      top: textEntry.y,
+      right: textEntry.x + textEntry.width,
+      bottom: textEntry.y + textEntry.height,
+      width: textEntry.width,
+      height: textEntry.height
+    };
+  }
+
+  function getTextEntryById(id) {
+    return state.strokes.find((entry) => entry.type === 'text' && entry.id === id) || null;
+  }
+
+  function getSelectedTextEntry() {
+    if (state.selectedTextId === null) {
+      return null;
+    }
+
+    return getTextEntryById(state.selectedTextId);
+  }
+
+  function getAnchorPoints(bounds) {
+    return {
+      nw: { x: bounds.left, y: bounds.top },
+      n: { x: bounds.left + bounds.width / 2, y: bounds.top },
+      ne: { x: bounds.right, y: bounds.top },
+      e: { x: bounds.right, y: bounds.top + bounds.height / 2 },
+      se: { x: bounds.right, y: bounds.bottom },
+      s: { x: bounds.left + bounds.width / 2, y: bounds.bottom },
+      sw: { x: bounds.left, y: bounds.bottom },
+      w: { x: bounds.left, y: bounds.top + bounds.height / 2 }
+    };
+  }
+
+  function getAnchorCursor(anchor) {
+    if (anchor === 'n' || anchor === 's') {
+      return 'ns-resize';
+    }
+    if (anchor === 'e' || anchor === 'w') {
+      return 'ew-resize';
+    }
+    if (anchor === 'nw' || anchor === 'se') {
+      return 'nwse-resize';
+    }
+    return 'nesw-resize';
+  }
+
+  function hitTestTextBody(point, textEntry) {
+    const bounds = getTextBounds(textEntry);
+    return (
+      point.x >= bounds.left &&
+      point.x <= bounds.right &&
+      point.y >= bounds.top &&
+      point.y <= bounds.bottom
+    );
+  }
+
+  function hitTestTextAnchor(point, textEntry) {
+    const bounds = getTextBounds(textEntry);
+    const anchors = getAnchorPoints(bounds);
+    const half = ANCHOR_SIZE / 2;
+
+    for (const [anchorKey, anchorPoint] of Object.entries(anchors)) {
+      if (
+        point.x >= anchorPoint.x - half &&
+        point.x <= anchorPoint.x + half &&
+        point.y >= anchorPoint.y - half &&
+        point.y <= anchorPoint.y + half
+      ) {
+        return anchorKey;
+      }
+    }
+
+    return null;
+  }
+
+  function findTopTextAtPoint(point) {
+    for (let i = state.strokes.length - 1; i >= 0; i -= 1) {
+      const entry = state.strokes[i];
+      if (entry.type !== 'text') {
+        continue;
+      }
+
+      if (hitTestTextBody(point, entry)) {
+        return entry;
+      }
+    }
+
+    return null;
+  }
+
+  function clearInteractionState() {
+    state.interactionMode = 'none';
+    state.activeAnchor = null;
+    state.interactionPointerId = null;
+    state.interactionStartPoint = null;
+    state.interactionStartText = null;
+  }
+
+  function isTextTransformChanged(textEntry, startText) {
+    if (!textEntry || !startText) {
+      return false;
+    }
+
+    return (
+      textEntry.x !== startText.x ||
+      textEntry.y !== startText.y ||
+      textEntry.fontSize !== startText.fontSize ||
+      textEntry.width !== startText.width ||
+      textEntry.height !== startText.height
+    );
+  }
+
   function commitTextAt(point, text, color, fontSize) {
     if (!state.context || !text.trim()) {
       return;
     }
 
-    state.strokes.push({
+    const textEntry = {
+      id: state.nextTextId,
       type: 'text',
       text,
       x: point.x,
       y: point.y,
       color,
-      fontSize
-    });
+      fontSize,
+      width: 0,
+      height: 0
+    };
 
+    state.nextTextId += 1;
+    updateTextBounds(textEntry);
+    state.strokes.push(textEntry);
+    state.selectedTextId = textEntry.id;
+    pushHistorySnapshot();
     replayStrokes();
   }
 
@@ -80,8 +269,8 @@
 
     const editorColor = state.brushColor;
     const editorFontSize = getTextFontSize();
-
     const input = document.createElement('input');
+
     input.type = 'text';
     input.placeholder = 'Type text';
     input.style.position = 'fixed';
@@ -99,6 +288,7 @@
 
     document.body.appendChild(input);
     input.focus();
+    state.selectedTextId = null;
 
     let isFinalized = false;
 
@@ -117,6 +307,8 @@
 
       if (commit) {
         commitTextAt(point, textValue, editorColor, editorFontSize);
+      } else {
+        replayStrokes();
       }
     };
 
@@ -147,7 +339,7 @@
   }
 
   function drawStrokePath(stroke) {
-    if (!state.context || !stroke || stroke.points.length === 0) {
+    if (!state.context || !stroke || !stroke.points || stroke.points.length === 0) {
       return;
     }
 
@@ -184,7 +376,6 @@
     const penultimate = stroke.points[stroke.points.length - 2];
     const last = stroke.points[stroke.points.length - 1];
     state.context.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
-
     state.context.stroke();
   }
 
@@ -193,69 +384,86 @@
       return;
     }
 
+    updateTextBounds(entry);
     state.context.fillStyle = entry.color;
     state.context.font = `${entry.fontSize}px Arial, sans-serif`;
     state.context.textBaseline = 'top';
     state.context.fillText(entry.text, entry.x, entry.y);
   }
 
-  function handlePointerDown(event) {
+  function drawTextSelection(entry) {
+    if (!state.context || !entry) {
+      return;
+    }
+
+    const bounds = getTextBounds(entry);
+    const anchors = getAnchorPoints(bounds);
+    const half = ANCHOR_SIZE / 2;
+
+    state.context.save();
+    state.context.strokeStyle = '#0a84ff';
+    state.context.lineWidth = 1;
+    state.context.setLineDash([4, 3]);
+    state.context.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
+    state.context.setLineDash([]);
+
+    for (const anchor of Object.values(anchors)) {
+      state.context.fillStyle = '#ffffff';
+      state.context.strokeStyle = '#0a84ff';
+      state.context.lineWidth = 1.25;
+      state.context.fillRect(anchor.x - half, anchor.y - half, ANCHOR_SIZE, ANCHOR_SIZE);
+      state.context.strokeRect(anchor.x - half, anchor.y - half, ANCHOR_SIZE, ANCHOR_SIZE);
+    }
+
+    state.context.restore();
+  }
+
+  function updateCanvasCursor(pointerPoint) {
+    if (!state.canvas) {
+      return;
+    }
+
     if (!state.enabled || !state.isDrawingMode) {
+      state.canvas.style.cursor = 'crosshair';
       return;
     }
 
-    if (state.activeTool !== 'brush') {
+    if (state.activeTool === 'brush') {
+      state.canvas.style.cursor = 'crosshair';
       return;
     }
 
-    state.isPointerDown = true;
-    const point = getCanvasPoint(event);
-    state.currentStroke = {
-      color: state.brushColor,
-      size: state.brushSize,
-      points: [point]
-    };
-
-    replayStrokes();
-  }
-
-  function handleCanvasClick(event) {
-    if (!state.enabled || !state.isDrawingMode || state.activeTool !== 'text') {
+    if (state.interactionMode === 'drag-text') {
+      state.canvas.style.cursor = 'grabbing';
       return;
     }
 
-    const point = getCanvasPoint(event);
-    openTextEditorAt(point);
-  }
-
-  function handlePointerMove(event) {
-    if (
-      !state.enabled ||
-      !state.isDrawingMode ||
-      state.activeTool !== 'brush' ||
-      !state.isPointerDown
-    ) {
+    if (state.interactionMode === 'resize-text' && state.activeAnchor) {
+      state.canvas.style.cursor = getAnchorCursor(state.activeAnchor);
       return;
     }
 
-    const point = getCanvasPoint(event);
-
-    if (state.currentStroke) {
-      const smoothedPoint = getSmoothedPoint(point, state.currentStroke.points);
-      state.currentStroke.points.push(smoothedPoint);
+    if (!pointerPoint) {
+      state.canvas.style.cursor = 'text';
+      return;
     }
 
-    replayStrokes();
-  }
+    const selected = getSelectedTextEntry();
+    if (selected) {
+      const anchor = hitTestTextAnchor(pointerPoint, selected);
+      if (anchor) {
+        state.canvas.style.cursor = getAnchorCursor(anchor);
+        return;
+      }
 
-  function handlePointerUp() {
-    if (state.currentStroke && state.currentStroke.points.length > 0) {
-      state.strokes.push(state.currentStroke);
+      if (hitTestTextBody(pointerPoint, selected)) {
+        state.canvas.style.cursor = 'move';
+        return;
+      }
     }
 
-    state.currentStroke = null;
-    state.isPointerDown = false;
-    replayStrokes();
+    const hovered = findTopTextAtPoint(pointerPoint);
+    state.canvas.style.cursor = hovered ? 'move' : 'text';
   }
 
   function replayStrokes() {
@@ -265,36 +473,299 @@
 
     state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
 
-    for (const stroke of state.strokes) {
-      if (stroke.type === 'text') {
-        drawTextEntry(stroke);
+    for (const entry of state.strokes) {
+      if (entry.type === 'text') {
+        drawTextEntry(entry);
         continue;
       }
 
-      drawStrokePath(stroke);
+      drawStrokePath(entry);
     }
 
     if (state.currentStroke) {
       drawStrokePath(state.currentStroke);
     }
+
+    if (state.activeTool === 'text') {
+      const selected = getSelectedTextEntry();
+      if (selected) {
+        drawTextSelection(selected);
+      }
+    }
   }
 
   function undoLastStroke() {
-    if (state.strokes.length === 0) {
+    ensureHistoryInitialized();
+    if (state.history.length <= 1) {
       return false;
     }
 
-    state.strokes.pop();
+    state.history.pop();
+    state.strokes = cloneStrokes(state.history[state.history.length - 1]);
+    state.currentStroke = null;
+    clearInteractionState();
+    recomputeNextTextId();
+
+    if (!getSelectedTextEntry()) {
+      state.selectedTextId = null;
+    }
+
     replayStrokes();
     return true;
   }
 
   function clearAllStrokes() {
+    if (state.strokes.length === 0) {
+      return;
+    }
+
     state.strokes = [];
     state.currentStroke = null;
+    state.selectedTextId = null;
+    clearInteractionState();
+    pushHistorySnapshot();
 
     if (state.canvas && state.context) {
       state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
+    }
+  }
+
+  function applyTextResize(point) {
+    const selected = getSelectedTextEntry();
+    const startText = state.interactionStartText;
+    const startPoint = state.interactionStartPoint;
+    const anchor = state.activeAnchor;
+
+    if (!selected || !startText || !startPoint || !anchor) {
+      return;
+    }
+
+    const dx = point.x - startPoint.x;
+    const dy = point.y - startPoint.y;
+
+    let delta = 0;
+    if (anchor.length === 2) {
+      const horizontal = anchor.includes('e') ? dx : -dx;
+      const vertical = anchor.includes('s') ? dy : -dy;
+      delta = (horizontal + vertical) / 2;
+    } else if (anchor === 'e') {
+      delta = dx;
+    } else if (anchor === 'w') {
+      delta = -dx;
+    } else if (anchor === 's') {
+      delta = dy;
+    } else if (anchor === 'n') {
+      delta = -dy;
+    }
+
+    const newFontSize = Math.max(MIN_TEXT_SIZE, Math.round(startText.fontSize + delta * 0.2));
+    selected.fontSize = newFontSize;
+    updateTextBounds(selected);
+
+    selected.x = startText.x;
+    selected.y = startText.y;
+
+    if (anchor.includes('w')) {
+      selected.x = startText.x + (startText.width - selected.width);
+    }
+
+    if (anchor.includes('n')) {
+      selected.y = startText.y + (startText.height - selected.height);
+    }
+
+    selected.x = Math.max(0, selected.x);
+    selected.y = Math.max(0, selected.y);
+  }
+
+  function handlePointerDown(event) {
+    if (!state.enabled || !state.isDrawingMode || !state.canvas) {
+      return;
+    }
+
+    const point = getCanvasPoint(event);
+
+    if (state.activeTool === 'brush') {
+      state.isPointerDown = true;
+      state.currentStroke = {
+        type: 'brush',
+        color: state.brushColor,
+        size: state.brushSize,
+        points: [point]
+      };
+
+      replayStrokes();
+      return;
+    }
+
+    if (state.activeTool !== 'text') {
+      return;
+    }
+
+    const selected = getSelectedTextEntry();
+    if (selected) {
+      const anchor = hitTestTextAnchor(point, selected);
+      if (anchor) {
+        state.interactionMode = 'resize-text';
+        state.activeAnchor = anchor;
+        state.interactionPointerId = event.pointerId;
+        state.interactionStartPoint = point;
+        state.interactionStartText = {
+          x: selected.x,
+          y: selected.y,
+          width: selected.width,
+          height: selected.height,
+          fontSize: selected.fontSize
+        };
+        state.canvas.setPointerCapture(event.pointerId);
+        updateCanvasCursor(point);
+        return;
+      }
+
+      if (hitTestTextBody(point, selected)) {
+        state.interactionMode = 'drag-text';
+        state.interactionPointerId = event.pointerId;
+        state.interactionStartPoint = point;
+        state.interactionStartText = {
+          x: selected.x,
+          y: selected.y,
+          width: selected.width,
+          height: selected.height,
+          fontSize: selected.fontSize
+        };
+        state.canvas.setPointerCapture(event.pointerId);
+        updateCanvasCursor(point);
+        return;
+      }
+    }
+
+    const clickedText = findTopTextAtPoint(point);
+    if (clickedText) {
+      state.selectedTextId = clickedText.id;
+      state.interactionMode = 'drag-text';
+      state.interactionPointerId = event.pointerId;
+      state.interactionStartPoint = point;
+      state.interactionStartText = {
+        x: clickedText.x,
+        y: clickedText.y,
+        width: clickedText.width,
+        height: clickedText.height,
+        fontSize: clickedText.fontSize
+      };
+      state.canvas.setPointerCapture(event.pointerId);
+      replayStrokes();
+      updateCanvasCursor(point);
+      return;
+    }
+
+    clearInteractionState();
+    state.selectedTextId = null;
+    replayStrokes();
+    openTextEditorAt(point);
+  }
+
+  function handlePointerMove(event) {
+    if (!state.enabled || !state.isDrawingMode || !state.canvas) {
+      return;
+    }
+
+    const point = getCanvasPoint(event);
+
+    if (state.activeTool === 'brush') {
+      if (!state.isPointerDown) {
+        return;
+      }
+
+      if (state.currentStroke) {
+        const smoothedPoint = getSmoothedPoint(point, state.currentStroke.points);
+        state.currentStroke.points.push(smoothedPoint);
+      }
+
+      replayStrokes();
+      return;
+    }
+
+    if (state.activeTool !== 'text') {
+      return;
+    }
+
+    if (
+      state.interactionMode !== 'none' &&
+      state.interactionPointerId !== null &&
+      event.pointerId !== state.interactionPointerId
+    ) {
+      return;
+    }
+
+    const selected = getSelectedTextEntry();
+
+    if (state.interactionMode === 'drag-text' && selected && state.interactionStartPoint) {
+      const dx = point.x - state.interactionStartPoint.x;
+      const dy = point.y - state.interactionStartPoint.y;
+
+      selected.x = Math.max(0, state.interactionStartText.x + dx);
+      selected.y = Math.max(0, state.interactionStartText.y + dy);
+      replayStrokes();
+      updateCanvasCursor(point);
+      return;
+    }
+
+    if (state.interactionMode === 'resize-text' && selected) {
+      applyTextResize(point);
+      replayStrokes();
+      updateCanvasCursor(point);
+      return;
+    }
+
+    updateCanvasCursor(point);
+  }
+
+  function handlePointerUp(event) {
+    if (!state.enabled || !state.canvas) {
+      return;
+    }
+
+    if (state.activeTool === 'brush') {
+      if (state.currentStroke && state.currentStroke.points.length > 0) {
+        state.strokes.push(state.currentStroke);
+        pushHistorySnapshot();
+      }
+
+      state.currentStroke = null;
+      state.isPointerDown = false;
+      replayStrokes();
+      return;
+    }
+
+    if (state.activeTool !== 'text') {
+      return;
+    }
+
+    const selected = getSelectedTextEntry();
+    let didCommitTransform = false;
+
+    if (
+      selected &&
+      (state.interactionMode === 'drag-text' || state.interactionMode === 'resize-text') &&
+      state.interactionStartText &&
+      isTextTransformChanged(selected, state.interactionStartText)
+    ) {
+      pushHistorySnapshot();
+      didCommitTransform = true;
+    }
+
+    if (
+      state.interactionPointerId !== null &&
+      event.pointerId === state.interactionPointerId &&
+      state.canvas.hasPointerCapture(event.pointerId)
+    ) {
+      state.canvas.releasePointerCapture(event.pointerId);
+    }
+
+    clearInteractionState();
+    if (!didCommitTransform) {
+      replayStrokes();
+    } else {
+      updateCanvasCursor();
     }
   }
 
@@ -340,7 +811,6 @@
     canvas.addEventListener('pointermove', handlePointerMove);
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointerleave', handlePointerUp);
-    canvas.addEventListener('click', handleCanvasClick);
 
     state.canvas = canvas;
     state.context = canvas.getContext('2d');
@@ -357,7 +827,6 @@
 
     state.toolbarElements.drawButton.classList.toggle('is-active', state.activeTool === 'brush');
     state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
-
     state.toolbarElements.toolbar.classList.toggle('is-drawing', state.isDrawingMode);
     state.toolbarElements.sizeField.classList.toggle('is-expanded', state.isSizeExpanded);
     state.toolbarElements.sizeToggle.textContent = state.isSizeExpanded ? 'Size -' : 'Size +';
@@ -366,15 +835,18 @@
       state.canvas.style.boxShadow = state.isDrawingMode
         ? 'inset 0 0 0 2px rgba(23, 98, 166, 0.9)'
         : 'none';
+      updateCanvasCursor();
     }
   }
 
   function setActiveTool(tool) {
     state.activeTool = tool;
+
     if (!state.isDrawingMode) {
       setDrawingMode(true);
     }
 
+    replayStrokes();
     updateToolbarState();
   }
 
@@ -512,10 +984,14 @@
       createToolbar();
     }
 
+    ensureHistoryInitialized();
+    recomputeNextTextId();
+
     state.canvas.style.display = 'block';
     state.toolbarHost.style.display = 'block';
     setDrawingMode(false);
     updateToolbarState();
+    replayStrokes();
     state.enabled = true;
   }
 
@@ -525,6 +1001,8 @@
     }
 
     setDrawingMode(false);
+    clearInteractionState();
+    state.selectedTextId = null;
 
     if (state.textEditor && state.textEditor.element) {
       state.textEditor.element.remove();
@@ -544,6 +1022,7 @@
     state.isDrawingMode = active;
     state.canvas.style.pointerEvents = active ? 'auto' : 'none';
     document.body.style.cursor = active ? 'crosshair' : '';
+    updateCanvasCursor();
   }
 
   function toggleDrawingMode() {
