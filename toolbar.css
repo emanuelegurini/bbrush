@@ -66,3 +66,7 @@
 .bbrush-toolbar button:hover {
   background: #0f4f89;
 }
+
+.bbrush-toolbar button.is-active {
+  background: #0a84ff;
+}

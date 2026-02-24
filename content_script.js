@@ -14,6 +14,7 @@
     dragOffsetY: 0,
     isDraggingToolbar: false,
     isDrawingMode: false,
+    activeTool: 'brush',
     isPointerDown: false,
     brushColor: '#000000',
     brushSize: 4,
@@ -92,7 +93,7 @@
   }
 
   function handlePointerDown(event) {
-    if (!state.enabled || !state.isDrawingMode) {
+    if (!state.enabled || !state.isDrawingMode || state.activeTool !== 'brush') {
       return;
     }
 
@@ -108,7 +109,12 @@
   }
 
   function handlePointerMove(event) {
-    if (!state.enabled || !state.isDrawingMode || !state.isPointerDown) {
+    if (
+      !state.enabled ||
+      !state.isDrawingMode ||
+      state.activeTool !== 'brush' ||
+      !state.isPointerDown
+    ) {
       return;
     }
 
@@ -223,6 +229,9 @@
       ? 'Stop drawing'
       : 'Start drawing';
 
+    state.toolbarElements.drawButton.classList.toggle('is-active', state.activeTool === 'brush');
+    state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
+
     state.toolbarElements.toolbar.classList.toggle('is-drawing', state.isDrawingMode);
 
     if (state.canvas) {
@@ -230,6 +239,15 @@
         ? 'inset 0 0 0 2px rgba(23, 98, 166, 0.9)'
         : 'none';
     }
+  }
+
+  function setActiveTool(tool) {
+    state.activeTool = tool;
+    if (!state.isDrawingMode) {
+      setDrawingMode(true);
+    }
+
+    updateToolbarState();
   }
 
   function createToolbar() {
@@ -252,6 +270,8 @@
           <span>Size</span>
           <input data-role="size" type="range" min="1" max="24" value="4" />
         </label>
+        <button data-role="tool-brush">Draw</button>
+        <button data-role="tool-text">Text</button>
         <button data-role="toggle">Start drawing</button>
         <button data-role="undo">Undo</button>
         <button data-role="clear">Clear</button>
@@ -266,6 +286,8 @@
     const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
     const colorInput = shadowRoot.querySelector('[data-role="color"]');
     const sizeInput = shadowRoot.querySelector('[data-role="size"]');
+    const drawButton = shadowRoot.querySelector('[data-role="tool-brush"]');
+    const textButton = shadowRoot.querySelector('[data-role="tool-text"]');
     const toolbar = shadowRoot.querySelector('.bbrush-toolbar');
     const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
@@ -277,6 +299,14 @@
 
     sizeInput.addEventListener('input', () => {
       state.brushSize = Number(sizeInput.value);
+    });
+
+    drawButton.addEventListener('click', () => {
+      setActiveTool('brush');
+    });
+
+    textButton.addEventListener('click', () => {
+      setActiveTool('text');
     });
 
     dragHandle.addEventListener('pointerdown', (event) => {
@@ -305,7 +335,6 @@
 
     toggleButton.addEventListener('click', () => {
       toggleDrawingMode();
-      updateToolbarState();
     });
 
     undoButton.addEventListener('click', () => {
@@ -323,6 +352,8 @@
     state.toolbarElements = {
       colorInput,
       sizeInput,
+      drawButton,
+      textButton,
       toolbar,
       toggleButton,
       undoButton,
@@ -424,3 +455,10 @@
     disableOverlay
   };
 })();
+    drawButton.addEventListener('click', () => {
+      setActiveTool('brush');
+    });
+
+    textButton.addEventListener('click', () => {
+      setActiveTool('text');
+    });
