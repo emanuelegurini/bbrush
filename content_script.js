@@ -150,7 +150,7 @@
   }
 
   function drawStrokePath(stroke) {
-    if (!state.context || !stroke || stroke.type === 'text' || stroke.points.length === 0) {
+    if (!state.context || !stroke || stroke.points.length === 0) {
       return;
     }
 
@@ -189,6 +189,17 @@
     state.context.quadraticCurveTo(penultimate.x, penultimate.y, last.x, last.y);
 
     state.context.stroke();
+  }
+
+  function drawTextEntry(entry) {
+    if (!state.context || !entry || !entry.text) {
+      return;
+    }
+
+    state.context.fillStyle = entry.color;
+    state.context.font = `${entry.fontSize}px Arial, sans-serif`;
+    state.context.textBaseline = 'top';
+    state.context.fillText(entry.text, entry.x, entry.y);
   }
 
   function handlePointerDown(event) {
@@ -255,6 +266,11 @@
     state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
 
     for (const stroke of state.strokes) {
+      if (stroke.type === 'text') {
+        drawTextEntry(stroke);
+        continue;
+      }
+
       drawStrokePath(stroke);
     }
 
