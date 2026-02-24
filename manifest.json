@@ -29,5 +29,11 @@
       },
       "description": "Toggle drawing mode"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["toolbar.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -1,0 +1,27 @@
+.bbrush-toolbar {
+  align-items: center;
+  backdrop-filter: blur(8px);
+  background: rgba(16, 24, 32, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+}
+
+.bbrush-toolbar button {
+  background: #1762a6;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 8px 10px;
+}
+
+.bbrush-toolbar button:hover {
+  background: #0f4f89;
+}

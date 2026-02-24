@@ -194,6 +194,11 @@
       </div>
     `;
 
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = chrome.runtime.getURL('toolbar.css');
+    shadowRoot.prepend(stylesheet);
+
     const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
