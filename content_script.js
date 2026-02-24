@@ -118,6 +118,15 @@
     return true;
   }
 
+  function clearAllStrokes() {
+    state.strokes = [];
+    state.currentStroke = null;
+
+    if (state.canvas && state.context) {
+      state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
+    }
+  }
+
   function createCanvas() {
     const canvas = document.createElement('canvas');
     canvas.id = 'bbrush-canvas';
@@ -210,6 +219,12 @@
     if (message.type === 'BBRUSH_UNDO') {
       const changed = undoLastStroke();
       sendResponse({ ok: true, changed });
+      return;
+    }
+
+    if (message.type === 'BBRUSH_CLEAR_ALL') {
+      clearAllStrokes();
+      sendResponse({ ok: true });
     }
   });
 
