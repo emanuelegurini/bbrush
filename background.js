@@ -50,3 +50,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   activeOverlayTabs.delete(tabId);
 });
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'toggle-drawing-mode') {
+    return;
+  }
+
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (!activeTab || typeof activeTab.id !== 'number') {
+    return;
+  }
+
+  const tabId = activeTab.id;
+
+  if (!activeOverlayTabs.has(tabId)) {
+    await ensureContentScript(tabId);
+    await sendTabMessage(tabId, { type: 'BBRUSH_ENABLE_OVERLAY' });
+    activeOverlayTabs.add(tabId);
+  }
+
+  await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_DRAWING_MODE' });
+});
