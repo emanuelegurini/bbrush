@@ -38,6 +38,12 @@
   width: 28px;
 }
 
+.bbrush-toolbar-field input[type='range'] {
+  accent-color: #1762a6;
+  cursor: pointer;
+  width: 84px;
+}
+
 .bbrush-toolbar button {
   background: #1762a6;
   border: none;

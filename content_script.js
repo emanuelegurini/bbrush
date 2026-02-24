@@ -196,6 +196,10 @@
           <span>Color</span>
           <input data-role="color" type="color" value="#000000" />
         </label>
+        <label class="bbrush-toolbar-field">
+          <span>Size</span>
+          <input data-role="size" type="range" min="1" max="24" value="4" />
+        </label>
         <button data-role="toggle">Start drawing</button>
         <button data-role="undo">Undo</button>
         <button data-role="clear">Clear</button>
@@ -209,12 +213,17 @@
 
     const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
     const colorInput = shadowRoot.querySelector('[data-role="color"]');
+    const sizeInput = shadowRoot.querySelector('[data-role="size"]');
     const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
 
     colorInput.addEventListener('input', () => {
       state.brushColor = colorInput.value;
+    });
+
+    sizeInput.addEventListener('input', () => {
+      state.brushSize = Number(sizeInput.value);
     });
 
     dragHandle.addEventListener('pointerdown', (event) => {
@@ -260,6 +269,7 @@
     state.toolbarShadowRoot = shadowRoot;
     state.toolbarElements = {
       colorInput,
+      sizeInput,
       toggleButton,
       undoButton,
       clearButton
