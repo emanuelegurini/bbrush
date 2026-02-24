@@ -1,0 +1,11 @@
+{
+  "name": "bbrush",
+  "version": "1.0.0",
+  "description": "Browser drawing overlay extension for slide presentations",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "private": true,
+  "type": "commonjs"
+}
