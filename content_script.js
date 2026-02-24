@@ -133,6 +133,16 @@
     }
   }
 
+  function handleResize() {
+    if (!state.canvas) {
+      return;
+    }
+
+    state.canvas.width = window.innerWidth;
+    state.canvas.height = window.innerHeight;
+    replayStrokes();
+  }
+
   function handleKeyDown(event) {
     const undoPressed = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z';
 
@@ -363,6 +373,7 @@
   });
 
   document.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('resize', handleResize);
 
   window.__BBRUSH__ = {
     enableOverlay,
