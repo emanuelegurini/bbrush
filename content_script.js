@@ -6,7 +6,8 @@
   const state = {
     enabled: false,
     canvas: null,
-    context: null
+    context: null,
+    isDrawingMode: false
   };
 
   function createCanvas() {
@@ -19,6 +20,7 @@
     canvas.style.position = 'fixed';
     canvas.style.top = '0';
     canvas.style.zIndex = '2147483647';
+    canvas.style.cursor = 'crosshair';
 
     document.body.appendChild(canvas);
 
@@ -36,6 +38,7 @@
     }
 
     state.canvas.style.display = 'block';
+    setDrawingMode(false);
     state.enabled = true;
   }
 
@@ -44,8 +47,28 @@
       return;
     }
 
+    setDrawingMode(false);
     state.canvas.style.display = 'none';
     state.enabled = false;
+  }
+
+  function setDrawingMode(active) {
+    if (!state.canvas) {
+      return;
+    }
+
+    state.isDrawingMode = active;
+    state.canvas.style.pointerEvents = active ? 'auto' : 'none';
+    document.body.style.cursor = active ? 'crosshair' : '';
+  }
+
+  function toggleDrawingMode() {
+    if (!state.enabled) {
+      return false;
+    }
+
+    setDrawingMode(!state.isDrawingMode);
+    return state.isDrawingMode;
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -62,6 +85,12 @@
     if (message.type === 'BBRUSH_DISABLE_OVERLAY') {
       disableOverlay();
       sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === 'BBRUSH_TOGGLE_DRAWING_MODE') {
+      const active = toggleDrawingMode();
+      sendResponse({ ok: true, drawingMode: active });
     }
   });
 
