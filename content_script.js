@@ -188,6 +188,14 @@
     state.toolbarElements.toggleButton.textContent = state.isDrawingMode
       ? 'Stop drawing'
       : 'Start drawing';
+
+    state.toolbarElements.toolbar.classList.toggle('is-drawing', state.isDrawingMode);
+
+    if (state.canvas) {
+      state.canvas.style.boxShadow = state.isDrawingMode
+        ? 'inset 0 0 0 2px rgba(23, 98, 166, 0.9)'
+        : 'none';
+    }
   }
 
   function createToolbar() {
@@ -224,6 +232,7 @@
     const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
     const colorInput = shadowRoot.querySelector('[data-role="color"]');
     const sizeInput = shadowRoot.querySelector('[data-role="size"]');
+    const toolbar = shadowRoot.querySelector('.bbrush-toolbar');
     const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
@@ -280,6 +289,7 @@
     state.toolbarElements = {
       colorInput,
       sizeInput,
+      toolbar,
       toggleButton,
       undoButton,
       clearButton
