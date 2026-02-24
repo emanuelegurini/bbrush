@@ -786,16 +786,51 @@
   }
 
   function handleKeyDown(event) {
-    const undoPressed = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z';
-
-    if (!undoPressed || !state.enabled) {
+    if (!state.enabled) {
       return;
     }
 
-    const changed = undoLastStroke();
+    const key = event.key.toLowerCase();
+    const undoPressed = (event.ctrlKey || event.metaKey) && key === 'z';
 
-    if (changed) {
+    if (undoPressed) {
+      const changed = undoLastStroke();
+
+      if (changed) {
+        event.preventDefault();
+      }
+
+      return;
+    }
+
+    if (key === 'b') {
+      setActiveTool('brush');
       event.preventDefault();
+      return;
+    }
+
+    if (key === 't') {
+      setActiveTool('text');
+      event.preventDefault();
+      return;
+    }
+
+    if (key === 'escape') {
+      if (state.textEditor && state.textEditor.element) {
+        state.textEditor.element.blur();
+        event.preventDefault();
+        return;
+      }
+
+      if (state.selectedTextId !== null || state.interactionMode !== 'none') {
+        state.selectedTextId = null;
+        clearInteractionState();
+        replayStrokes();
+        updateCanvasCursor();
+        event.preventDefault();
+      }
+
+      return;
     }
   }
 
@@ -827,15 +862,30 @@
       return;
     }
 
-    state.toolbarElements.toggleButton.textContent = state.isDrawingMode
-      ? 'Stop drawing'
-      : 'Start drawing';
+    state.toolbarElements.annotateToggleButton.textContent = state.isDrawingMode
+      ? 'Annotate: ON'
+      : 'Annotate: OFF';
 
     state.toolbarElements.drawButton.classList.toggle('is-active', state.activeTool === 'brush');
     state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
+    state.toolbarElements.annotateToggleButton.classList.toggle('is-active', state.isDrawingMode);
     state.toolbarElements.toolbar.classList.toggle('is-drawing', state.isDrawingMode);
     state.toolbarElements.sizeField.classList.toggle('is-expanded', state.isSizeExpanded);
     state.toolbarElements.sizeToggle.textContent = state.isSizeExpanded ? 'Size -' : 'Size +';
+
+    if (!state.isDrawingMode) {
+      state.isSizeExpanded = false;
+      state.toolbarElements.sizeField.classList.remove('is-expanded');
+      state.toolbarElements.sizeToggle.textContent = 'Size +';
+    }
+
+    state.toolbarElements.colorInput.disabled = !state.isDrawingMode;
+    state.toolbarElements.sizeToggle.disabled = !state.isDrawingMode;
+    state.toolbarElements.sizeInput.disabled = !state.isDrawingMode;
+    state.toolbarElements.drawButton.disabled = !state.isDrawingMode;
+    state.toolbarElements.textButton.disabled = !state.isDrawingMode;
+    state.toolbarElements.undoButton.disabled = !state.isDrawingMode;
+    state.toolbarElements.clearButton.disabled = !state.isDrawingMode;
 
     if (state.canvas) {
       state.canvas.style.boxShadow = state.isDrawingMode
@@ -868,6 +918,7 @@
     shadowRoot.innerHTML = `
       <div class="bbrush-toolbar">
         <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
+        <button data-role="annotate-toggle">Annotate: OFF</button>
         <label class="bbrush-toolbar-field">
           <span>Color</span>
           <input data-role="color" type="color" value="#000000" />
@@ -877,9 +928,8 @@
           <span>Size</span>
           <input data-role="size" type="range" min="1" max="24" value="4" />
         </label>
-        <button data-role="tool-brush">Draw</button>
+        <button data-role="tool-brush">Pen</button>
         <button data-role="tool-text">Text</button>
-        <button data-role="toggle">Start drawing</button>
         <button data-role="undo">Undo</button>
         <button data-role="clear">Clear</button>
       </div>
@@ -891,6 +941,7 @@
     shadowRoot.prepend(stylesheet);
 
     const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
+    const annotateToggleButton = shadowRoot.querySelector('[data-role="annotate-toggle"]');
     const colorInput = shadowRoot.querySelector('[data-role="color"]');
     const sizeToggle = shadowRoot.querySelector('[data-role="size-toggle"]');
     const sizeField = shadowRoot.querySelector('[data-role="size-field"]');
@@ -898,7 +949,6 @@
     const drawButton = shadowRoot.querySelector('[data-role="tool-brush"]');
     const textButton = shadowRoot.querySelector('[data-role="tool-text"]');
     const toolbar = shadowRoot.querySelector('.bbrush-toolbar');
-    const toggleButton = shadowRoot.querySelector('[data-role="toggle"]');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
 
@@ -947,7 +997,7 @@
       dragHandle.releasePointerCapture(event.pointerId);
     });
 
-    toggleButton.addEventListener('click', () => {
+    annotateToggleButton.addEventListener('click', () => {
       toggleDrawingMode();
     });
 
@@ -971,7 +1021,7 @@
       drawButton,
       textButton,
       toolbar,
-      toggleButton,
+      annotateToggleButton,
       undoButton,
       clearButton
     };
@@ -1026,6 +1076,19 @@
     }
 
     state.isDrawingMode = active;
+
+    if (!active) {
+      clearInteractionState();
+      state.selectedTextId = null;
+
+      if (state.textEditor && state.textEditor.element) {
+        state.textEditor.element.remove();
+        state.textEditor = null;
+      }
+
+      replayStrokes();
+    }
+
     state.canvas.style.pointerEvents = active ? 'auto' : 'none';
     document.body.style.cursor = active ? 'crosshair' : '';
     updateCanvasCursor();
