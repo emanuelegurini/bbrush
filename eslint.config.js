@@ -1,31 +1,31 @@
 module.exports = [
   {
-    files: ["**/*.js"],
+    files: ['**/*.js'],
     languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "script",
+      ecmaVersion: 'latest',
+      sourceType: 'script',
       globals: {
-        chrome: "readonly",
-        console: "readonly",
-        document: "readonly",
-        window: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly"
+        chrome: 'readonly',
+        console: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly'
       }
     },
     linterOptions: {
       reportUnusedDisableDirectives: true
     },
     rules: {
-      "no-unused-vars": [
-        "error",
+      'no-unused-vars': [
+        'error',
         {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_"
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_'
         }
       ],
-      eqeqeq: ["error", "always"],
-      curly: ["error", "all"]
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all']
     }
   }
 ];

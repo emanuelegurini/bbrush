@@ -12,7 +12,9 @@
 
 .bbrush-toolbar.is-drawing {
   border-color: rgba(74, 162, 238, 0.9);
-  box-shadow: 0 0 0 2px rgba(23, 98, 166, 0.38), 0 10px 30px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 0 0 2px rgba(23, 98, 166, 0.38),
+    0 10px 30px rgba(0, 0, 0, 0.22);
 }
 
 .bbrush-toolbar-handle {
