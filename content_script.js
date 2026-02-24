@@ -56,10 +56,33 @@
     return Math.max(12, state.brushSize * 3);
   }
 
+  function commitTextAt(point, text, color, fontSize) {
+    if (!state.context || !text.trim()) {
+      return;
+    }
+
+    state.context.fillStyle = color;
+    state.context.font = `${fontSize}px Arial, sans-serif`;
+    state.context.textBaseline = 'top';
+    state.context.fillText(text, point.x, point.y);
+
+    state.strokes.push({
+      type: 'text',
+      text,
+      x: point.x,
+      y: point.y,
+      color,
+      fontSize
+    });
+  }
+
   function openTextEditorAt(point) {
     if (state.textEditor && state.textEditor.element) {
       state.textEditor.element.remove();
     }
+
+    const editorColor = state.brushColor;
+    const editorFontSize = getTextFontSize();
 
     const input = document.createElement('input');
     input.type = 'text';
@@ -68,8 +91,8 @@
     input.style.left = `${point.x}px`;
     input.style.top = `${point.y}px`;
     input.style.zIndex = '2147483647';
-    input.style.color = state.brushColor;
-    input.style.fontSize = `${getTextFontSize()}px`;
+    input.style.color = editorColor;
+    input.style.fontSize = `${editorFontSize}px`;
     input.style.fontFamily = 'Arial, sans-serif';
     input.style.background = 'rgba(255, 255, 255, 0.92)';
     input.style.border = '1px solid #1762a6';
@@ -80,17 +103,54 @@
     document.body.appendChild(input);
     input.focus();
 
+    let isFinalized = false;
+
+    const finalize = (commit) => {
+      if (isFinalized) {
+        return;
+      }
+
+      isFinalized = true;
+      const textValue = input.value;
+      input.remove();
+
+      if (state.textEditor && state.textEditor.element === input) {
+        state.textEditor = null;
+      }
+
+      if (commit) {
+        commitTextAt(point, textValue, editorColor, editorFontSize);
+      }
+    };
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finalize(true);
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        finalize(false);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finalize(true);
+    });
+
     state.textEditor = {
       element: input,
       x: point.x,
       y: point.y,
-      color: state.brushColor,
-      fontSize: getTextFontSize()
+      color: editorColor,
+      fontSize: editorFontSize
     };
   }
 
   function drawStrokePath(stroke) {
-    if (!state.context || !stroke || stroke.points.length === 0) {
+    if (!state.context || !stroke || stroke.type === 'text' || stroke.points.length === 0) {
       return;
     }
 
@@ -448,6 +508,12 @@
     }
 
     setDrawingMode(false);
+
+    if (state.textEditor && state.textEditor.element) {
+      state.textEditor.element.remove();
+      state.textEditor = null;
+    }
+
     state.canvas.style.display = 'none';
     state.toolbarHost.style.display = 'none';
     state.enabled = false;
