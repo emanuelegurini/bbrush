@@ -2,10 +2,19 @@
   "name": "bbrush",
   "version": "1.0.0",
   "description": "Browser drawing overlay extension for slide presentations",
-  "scripts": {},
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "private": true,
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "eslint": "^10.0.2",
+    "prettier": "^3.8.1"
+  }
 }
