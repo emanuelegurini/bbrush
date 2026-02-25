@@ -1537,6 +1537,12 @@
       state.selectedArrowId = null;
     }
 
+    if (tool === 'brush' || tool === 'rect') {
+      state.selectedTextId = null;
+      state.selectedArrowId = null;
+      clearInteractionState();
+    }
+
     if (!state.isDrawingMode) {
       setDrawingMode(true);
     }
