@@ -312,6 +312,25 @@
     return true;
   }
 
+  function hitTestRectAnchor(point, entry) {
+    const bounds = getRectBounds(entry);
+    const anchors = getAnchorPoints(bounds);
+    const half = ANCHOR_SIZE / 2;
+
+    for (const [anchorKey, anchorPoint] of Object.entries(anchors)) {
+      if (
+        point.x >= anchorPoint.x - half &&
+        point.x <= anchorPoint.x + half &&
+        point.y >= anchorPoint.y - half &&
+        point.y <= anchorPoint.y + half
+      ) {
+        return anchorKey;
+      }
+    }
+
+    return null;
+  }
+
   function findTopRectAtPoint(point) {
     for (let i = state.strokes.length - 1; i >= 0; i -= 1) {
       const entry = state.strokes[i];
@@ -789,6 +808,8 @@
     }
 
     const bounds = getRectBounds(entry);
+    const anchors = getAnchorPoints(bounds);
+    const half = ANCHOR_SIZE / 2;
 
     state.context.save();
     state.context.strokeStyle = '#0a84ff';
@@ -796,6 +817,15 @@
     state.context.setLineDash([5, 3]);
     state.context.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
     state.context.setLineDash([]);
+
+    for (const anchor of Object.values(anchors)) {
+      state.context.fillStyle = '#ffffff';
+      state.context.strokeStyle = '#0a84ff';
+      state.context.lineWidth = 1.25;
+      state.context.fillRect(anchor.x - half, anchor.y - half, ANCHOR_SIZE, ANCHOR_SIZE);
+      state.context.strokeRect(anchor.x - half, anchor.y - half, ANCHOR_SIZE, ANCHOR_SIZE);
+    }
+
     state.context.restore();
   }
 
@@ -881,15 +911,28 @@
         return;
       }
 
+      if (state.interactionMode === 'resize-rect' && state.activeAnchor) {
+        state.canvas.style.cursor = getAnchorCursor(state.activeAnchor);
+        return;
+      }
+
       if (!pointerPoint) {
         state.canvas.style.cursor = 'crosshair';
         return;
       }
 
       const selectedRect = getSelectedRectEntry();
-      if (selectedRect && hitTestRectBody(pointerPoint, selectedRect)) {
-        state.canvas.style.cursor = 'move';
-        return;
+      if (selectedRect) {
+        const anchor = hitTestRectAnchor(pointerPoint, selectedRect);
+        if (anchor) {
+          state.canvas.style.cursor = getAnchorCursor(anchor);
+          return;
+        }
+
+        if (hitTestRectBody(pointerPoint, selectedRect)) {
+          state.canvas.style.cursor = 'move';
+          return;
+        }
       }
 
       const hoveredRect = findTopRectAtPoint(pointerPoint);
@@ -1119,6 +1162,55 @@
     selected.y = Math.max(0, selected.y);
   }
 
+  function applyRectResize(point) {
+    const selected = getSelectedRectEntry();
+    const startRect = state.interactionStartRect;
+    const startPoint = state.interactionStartPoint;
+    const anchor = state.activeAnchor;
+
+    if (!selected || !startRect || !startPoint || !anchor) {
+      return;
+    }
+
+    const minSize = 6;
+    const startBounds = getRectBounds(startRect);
+    const dx = point.x - startPoint.x;
+    const dy = point.y - startPoint.y;
+    let left = startBounds.left;
+    let right = startBounds.right;
+    let top = startBounds.top;
+    let bottom = startBounds.bottom;
+
+    if (anchor.includes('w')) {
+      left = Math.min(startBounds.right - minSize, startBounds.left + dx);
+    }
+
+    if (anchor.includes('e')) {
+      right = Math.max(startBounds.left + minSize, startBounds.right + dx);
+    }
+
+    if (anchor.includes('n')) {
+      top = Math.min(startBounds.bottom - minSize, startBounds.top + dy);
+    }
+
+    if (anchor.includes('s')) {
+      bottom = Math.max(startBounds.top + minSize, startBounds.bottom + dy);
+    }
+
+    left = Math.max(0, left);
+    top = Math.max(0, top);
+
+    if (state.canvas) {
+      right = Math.min(state.canvas.width, right);
+      bottom = Math.min(state.canvas.height, bottom);
+    }
+
+    selected.x1 = left;
+    selected.y1 = top;
+    selected.x2 = right;
+    selected.y2 = bottom;
+  }
+
   function handlePointerDown(event) {
     if (!state.enabled || !state.isDrawingMode || !state.canvas) {
       return;
@@ -1157,19 +1249,38 @@
       event.preventDefault();
       const selectedRect = getSelectedRectEntry();
 
-      if (selectedRect && hitTestRectBody(point, selectedRect)) {
-        state.interactionMode = 'drag-rect';
-        state.interactionPointerId = event.pointerId;
-        state.interactionStartPoint = point;
-        state.interactionStartRect = {
-          x1: selectedRect.x1,
-          y1: selectedRect.y1,
-          x2: selectedRect.x2,
-          y2: selectedRect.y2
-        };
-        state.canvas.setPointerCapture(event.pointerId);
-        updateCanvasCursor(point);
-        return;
+      if (selectedRect) {
+        const anchor = hitTestRectAnchor(point, selectedRect);
+        if (anchor) {
+          state.interactionMode = 'resize-rect';
+          state.activeAnchor = anchor;
+          state.interactionPointerId = event.pointerId;
+          state.interactionStartPoint = point;
+          state.interactionStartRect = {
+            x1: selectedRect.x1,
+            y1: selectedRect.y1,
+            x2: selectedRect.x2,
+            y2: selectedRect.y2
+          };
+          state.canvas.setPointerCapture(event.pointerId);
+          updateCanvasCursor(point);
+          return;
+        }
+
+        if (hitTestRectBody(point, selectedRect)) {
+          state.interactionMode = 'drag-rect';
+          state.interactionPointerId = event.pointerId;
+          state.interactionStartPoint = point;
+          state.interactionStartRect = {
+            x1: selectedRect.x1,
+            y1: selectedRect.y1,
+            x2: selectedRect.x2,
+            y2: selectedRect.y2
+          };
+          state.canvas.setPointerCapture(event.pointerId);
+          updateCanvasCursor(point);
+          return;
+        }
       }
 
       const clickedRect = findTopRectAtPoint(point);
@@ -1421,6 +1532,19 @@
         return;
       }
 
+      if (
+        state.interactionMode === 'resize-rect' &&
+        selectedRect &&
+        state.interactionStartPoint &&
+        state.interactionStartRect &&
+        state.activeAnchor
+      ) {
+        applyRectResize(point);
+        replayStrokes();
+        updateCanvasCursor(point);
+        return;
+      }
+
       if (!state.isPointerDown || !state.currentStroke || state.currentStroke.type !== 'rect') {
         updateCanvasCursor(point);
         return;
@@ -1565,7 +1689,7 @@
 
       if (
         selectedRect &&
-        state.interactionMode === 'drag-rect' &&
+        (state.interactionMode === 'drag-rect' || state.interactionMode === 'resize-rect') &&
         state.interactionStartRect &&
         isRectTransformChanged(selectedRect, state.interactionStartRect)
       ) {
