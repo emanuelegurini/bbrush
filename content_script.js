@@ -36,12 +36,14 @@
     textEditor: null,
     selectedTextId: null,
     selectedArrowId: null,
+    selectedRectId: null,
     interactionMode: 'none',
     activeAnchor: null,
     interactionPointerId: null,
     interactionStartPoint: null,
     interactionStartText: null,
     interactionStartArrow: null,
+    interactionStartRect: null,
     history: [],
     nextTextId: 1
   };
@@ -230,6 +232,84 @@
     return state.strokes.find((entry) => entry.type === 'arrow' && entry.id === id) || null;
   }
 
+  function getRectEntryById(id) {
+    return state.strokes.find((entry) => entry.type === 'rect' && entry.id === id) || null;
+  }
+
+  function getSelectedRectEntry() {
+    if (state.selectedRectId === null) {
+      return null;
+    }
+
+    return getRectEntryById(state.selectedRectId);
+  }
+
+  function getRectBounds(entry) {
+    const left = Math.min(entry.x1, entry.x2);
+    const right = Math.max(entry.x1, entry.x2);
+    const top = Math.min(entry.y1, entry.y2);
+    const bottom = Math.max(entry.y1, entry.y2);
+
+    return {
+      left,
+      right,
+      top,
+      bottom,
+      width: right - left,
+      height: bottom - top
+    };
+  }
+
+  function hitTestRectBody(point, entry) {
+    const bounds = getRectBounds(entry);
+    const threshold = Math.max(6, entry.size + 3);
+    const expandedLeft = bounds.left - threshold;
+    const expandedTop = bounds.top - threshold;
+    const expandedRight = bounds.right + threshold;
+    const expandedBottom = bounds.bottom + threshold;
+
+    if (
+      point.x < expandedLeft ||
+      point.x > expandedRight ||
+      point.y < expandedTop ||
+      point.y > expandedBottom
+    ) {
+      return false;
+    }
+
+    const innerLeft = bounds.left + threshold;
+    const innerTop = bounds.top + threshold;
+    const innerRight = bounds.right - threshold;
+    const innerBottom = bounds.bottom - threshold;
+    const hasInnerArea = innerLeft <= innerRight && innerTop <= innerBottom;
+
+    if (hasInnerArea) {
+      const insideInner =
+        point.x >= innerLeft &&
+        point.x <= innerRight &&
+        point.y >= innerTop &&
+        point.y <= innerBottom;
+      return !insideInner;
+    }
+
+    return true;
+  }
+
+  function findTopRectAtPoint(point) {
+    for (let i = state.strokes.length - 1; i >= 0; i -= 1) {
+      const entry = state.strokes[i];
+      if (entry.type !== 'rect') {
+        continue;
+      }
+
+      if (hitTestRectBody(point, entry)) {
+        return entry;
+      }
+    }
+
+    return null;
+  }
+
   function getSelectedArrowEntry() {
     if (state.selectedArrowId === null) {
       return null;
@@ -312,6 +392,7 @@
     state.interactionStartPoint = null;
     state.interactionStartText = null;
     state.interactionStartArrow = null;
+    state.interactionStartRect = null;
   }
 
   function isTextTransformChanged(textEntry, startText) {
@@ -341,6 +422,19 @@
     );
   }
 
+  function isRectTransformChanged(entry, startRect) {
+    if (!entry || !startRect) {
+      return false;
+    }
+
+    return (
+      entry.x1 !== startRect.x1 ||
+      entry.y1 !== startRect.y1 ||
+      entry.x2 !== startRect.x2 ||
+      entry.y2 !== startRect.y2
+    );
+  }
+
   function commitTextAt(point, text, color, fontSize) {
     if (!state.context || !text.trim()) {
       return;
@@ -363,6 +457,7 @@
     state.strokes.push(textEntry);
     state.selectedTextId = textEntry.id;
     state.selectedArrowId = null;
+    state.selectedRectId = null;
     pushHistorySnapshot();
     replayStrokes();
   }
@@ -400,6 +495,7 @@
     input.focus();
     state.selectedTextId = null;
     state.selectedArrowId = null;
+    state.selectedRectId = null;
 
     let isFinalized = false;
 
@@ -568,6 +664,22 @@
     state.context.restore();
   }
 
+  function drawRectSelection(entry) {
+    if (!state.context || !entry) {
+      return;
+    }
+
+    const bounds = getRectBounds(entry);
+
+    state.context.save();
+    state.context.strokeStyle = '#0a84ff';
+    state.context.lineWidth = 1;
+    state.context.setLineDash([5, 3]);
+    state.context.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
+    state.context.setLineDash([]);
+    state.context.restore();
+  }
+
   function drawArrowSelection(entry) {
     if (!state.context || !entry) {
       return;
@@ -640,7 +752,24 @@
     }
 
     if (state.activeTool === 'rect') {
-      state.canvas.style.cursor = 'crosshair';
+      if (state.interactionMode === 'drag-rect') {
+        state.canvas.style.cursor = 'grabbing';
+        return;
+      }
+
+      if (!pointerPoint) {
+        state.canvas.style.cursor = 'crosshair';
+        return;
+      }
+
+      const selectedRect = getSelectedRectEntry();
+      if (selectedRect && hitTestRectBody(pointerPoint, selectedRect)) {
+        state.canvas.style.cursor = 'move';
+        return;
+      }
+
+      const hoveredRect = findTopRectAtPoint(pointerPoint);
+      state.canvas.style.cursor = hoveredRect ? 'move' : 'crosshair';
       return;
     }
 
@@ -764,6 +893,13 @@
         drawArrowSelection(selectedArrow);
       }
     }
+
+    if (state.activeTool === 'rect') {
+      const selectedRect = getSelectedRectEntry();
+      if (selectedRect) {
+        drawRectSelection(selectedRect);
+      }
+    }
   }
 
   function undoLastStroke() {
@@ -786,6 +922,10 @@
       state.selectedArrowId = null;
     }
 
+    if (!getSelectedRectEntry()) {
+      state.selectedRectId = null;
+    }
+
     replayStrokes();
     return true;
   }
@@ -799,6 +939,7 @@
     state.currentStroke = null;
     state.selectedTextId = null;
     state.selectedArrowId = null;
+    state.selectedRectId = null;
     clearInteractionState();
     pushHistorySnapshot();
 
@@ -875,8 +1016,47 @@
     }
 
     if (state.activeTool === 'rect') {
+      event.preventDefault();
+      const selectedRect = getSelectedRectEntry();
+
+      if (selectedRect && hitTestRectBody(point, selectedRect)) {
+        state.interactionMode = 'drag-rect';
+        state.interactionPointerId = event.pointerId;
+        state.interactionStartPoint = point;
+        state.interactionStartRect = {
+          x1: selectedRect.x1,
+          y1: selectedRect.y1,
+          x2: selectedRect.x2,
+          y2: selectedRect.y2
+        };
+        state.canvas.setPointerCapture(event.pointerId);
+        updateCanvasCursor(point);
+        return;
+      }
+
+      const clickedRect = findTopRectAtPoint(point);
+      if (clickedRect) {
+        state.selectedRectId = clickedRect.id;
+        state.selectedTextId = null;
+        state.selectedArrowId = null;
+        state.interactionMode = 'drag-rect';
+        state.interactionPointerId = event.pointerId;
+        state.interactionStartPoint = point;
+        state.interactionStartRect = {
+          x1: clickedRect.x1,
+          y1: clickedRect.y1,
+          x2: clickedRect.x2,
+          y2: clickedRect.y2
+        };
+        state.canvas.setPointerCapture(event.pointerId);
+        replayStrokes();
+        updateCanvasCursor(point);
+        return;
+      }
+
       state.selectedTextId = null;
       state.selectedArrowId = null;
+      state.selectedRectId = null;
       clearInteractionState();
       state.isPointerDown = true;
       state.currentStroke = {
@@ -952,6 +1132,7 @@
       clearInteractionState();
       state.selectedTextId = null;
       state.selectedArrowId = null;
+      state.selectedRectId = null;
       state.isPointerDown = true;
       state.currentStroke = {
         id: state.nextTextId,
@@ -1062,7 +1243,35 @@
     }
 
     if (state.activeTool === 'rect') {
+      if (
+        state.interactionMode !== 'none' &&
+        state.interactionPointerId !== null &&
+        event.pointerId !== state.interactionPointerId
+      ) {
+        return;
+      }
+
+      const selectedRect = getSelectedRectEntry();
+
+      if (
+        state.interactionMode === 'drag-rect' &&
+        selectedRect &&
+        state.interactionStartPoint &&
+        state.interactionStartRect
+      ) {
+        const dx = point.x - state.interactionStartPoint.x;
+        const dy = point.y - state.interactionStartPoint.y;
+        selectedRect.x1 = state.interactionStartRect.x1 + dx;
+        selectedRect.y1 = state.interactionStartRect.y1 + dy;
+        selectedRect.x2 = state.interactionStartRect.x2 + dx;
+        selectedRect.y2 = state.interactionStartRect.y2 + dy;
+        replayStrokes();
+        updateCanvasCursor(point);
+        return;
+      }
+
       if (!state.isPointerDown || !state.currentStroke || state.currentStroke.type !== 'rect') {
+        updateCanvasCursor(point);
         return;
       }
 
@@ -1188,18 +1397,46 @@
     }
 
     if (state.activeTool === 'rect') {
+      const selectedRect = getSelectedRectEntry();
+      let didCommitTransform = false;
+
+      if (
+        selectedRect &&
+        state.interactionMode === 'drag-rect' &&
+        state.interactionStartRect &&
+        isRectTransformChanged(selectedRect, state.interactionStartRect)
+      ) {
+        pushHistorySnapshot();
+        didCommitTransform = true;
+      }
+
+      if (
+        state.interactionPointerId !== null &&
+        event.pointerId === state.interactionPointerId &&
+        state.canvas.hasPointerCapture(event.pointerId)
+      ) {
+        state.canvas.releasePointerCapture(event.pointerId);
+      }
+
       if (state.currentStroke && state.currentStroke.type === 'rect') {
         const dx = state.currentStroke.x2 - state.currentStroke.x1;
         const dy = state.currentStroke.y2 - state.currentStroke.y1;
         if (Math.max(Math.abs(dx), Math.abs(dy)) >= 3) {
           state.strokes.push(state.currentStroke);
+          state.selectedRectId = state.currentStroke.id;
           pushHistorySnapshot();
+          didCommitTransform = true;
         }
       }
 
       state.currentStroke = null;
       state.isPointerDown = false;
-      replayStrokes();
+      clearInteractionState();
+      if (!didCommitTransform) {
+        replayStrokes();
+      } else {
+        updateCanvasCursor();
+      }
       return;
     }
 
@@ -1348,10 +1585,12 @@
       if (
         state.selectedTextId !== null ||
         state.selectedArrowId !== null ||
+        state.selectedRectId !== null ||
         state.interactionMode !== 'none'
       ) {
         state.selectedTextId = null;
         state.selectedArrowId = null;
+        state.selectedRectId = null;
         clearInteractionState();
         replayStrokes();
         updateCanvasCursor();
@@ -1531,15 +1770,18 @@
 
     if (tool === 'arrow') {
       state.selectedTextId = null;
+      state.selectedRectId = null;
     }
 
     if (tool === 'text') {
       state.selectedArrowId = null;
+      state.selectedRectId = null;
     }
 
     if (tool === 'brush' || tool === 'rect') {
       state.selectedTextId = null;
       state.selectedArrowId = null;
+      state.selectedRectId = null;
       clearInteractionState();
     }
 
@@ -1932,6 +2174,7 @@
     clearInteractionState();
     state.selectedTextId = null;
     state.selectedArrowId = null;
+    state.selectedRectId = null;
     state.isDraggingLauncher = false;
     state.launcherPointerId = null;
     state.suppressNextLauncherClick = false;
@@ -1957,6 +2200,7 @@
       clearInteractionState();
       state.selectedTextId = null;
       state.selectedArrowId = null;
+      state.selectedRectId = null;
 
       if (state.textEditor && state.textEditor.element) {
         state.textEditor.element.remove();
