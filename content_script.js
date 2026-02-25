@@ -23,6 +23,7 @@
     launcherPointerId: null,
     suppressNextLauncherClick: false,
     isDrawingMode: false,
+    canvasMode: 'page',
     activeTool: 'brush',
     isPointerDown: false,
     eraserDidMutate: false,
@@ -34,6 +35,8 @@
     showQuickMenu: false,
     showShortcuts: false,
     currentStroke: null,
+    pageScene: { strokes: [], history: [] },
+    whiteboardScene: { strokes: [], history: [] },
     strokes: [],
     textEditor: null,
     selectedTextId: null,
@@ -50,6 +53,18 @@
     history: [],
     nextTextId: 1
   };
+
+  function getSceneState(mode) {
+    return mode === 'whiteboard' ? state.whiteboardScene : state.pageScene;
+  }
+
+  function syncActiveSceneReferences() {
+    const scene = getSceneState(state.canvasMode);
+    state.strokes = scene.strokes;
+    state.history = scene.history;
+  }
+
+  syncActiveSceneReferences();
 
   function cloneStrokes(strokes) {
     return JSON.parse(JSON.stringify(strokes));
@@ -71,9 +86,11 @@
 
   function recomputeNextTextId() {
     let maxId = 0;
-    for (const entry of state.strokes) {
-      if (typeof entry.id === 'number' && entry.id > maxId) {
-        maxId = entry.id;
+    for (const scene of [state.pageScene, state.whiteboardScene]) {
+      for (const entry of scene.strokes) {
+        if (typeof entry.id === 'number' && entry.id > maxId) {
+          maxId = entry.id;
+        }
       }
     }
     state.nextTextId = maxId + 1;
@@ -1042,6 +1059,13 @@
 
     state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
 
+    if (state.canvasMode === 'whiteboard') {
+      state.context.save();
+      state.context.fillStyle = '#f8fafc';
+      state.context.fillRect(0, 0, state.canvas.width, state.canvas.height);
+      state.context.restore();
+    }
+
     for (const entry of state.strokes) {
       if (entry.type === 'text') {
         drawTextEntry(entry);
@@ -1100,7 +1124,9 @@
     }
 
     state.history.pop();
-    state.strokes = cloneStrokes(state.history[state.history.length - 1]);
+    const previousStrokes = cloneStrokes(state.history[state.history.length - 1]);
+    state.strokes.length = 0;
+    state.strokes.push(...previousStrokes);
     state.currentStroke = null;
     clearInteractionState();
     recomputeNextTextId();
@@ -1126,7 +1152,7 @@
       return;
     }
 
-    state.strokes = [];
+    state.strokes.length = 0;
     state.currentStroke = null;
     state.selectedTextId = null;
     state.selectedArrowId = null;
@@ -1913,6 +1939,12 @@
       return;
     }
 
+    if (key === 'w') {
+      toggleCanvasMode();
+      event.preventDefault();
+      return;
+    }
+
     if (key === 'escape') {
       if (state.textEditor && state.textEditor.element) {
         state.textEditor.element.blur();
@@ -2026,6 +2058,41 @@
     updateToolbarState();
   }
 
+  function setCanvasMode(mode) {
+    if (mode !== 'page' && mode !== 'whiteboard') {
+      return;
+    }
+
+    if (state.canvasMode === mode) {
+      return;
+    }
+
+    state.canvasMode = mode;
+    syncActiveSceneReferences();
+    ensureHistoryInitialized();
+    recomputeNextTextId();
+    state.selectedTextId = null;
+    state.selectedArrowId = null;
+    state.selectedRectId = null;
+    clearInteractionState();
+
+    if (state.textEditor && state.textEditor.element) {
+      state.textEditor.element.remove();
+      state.textEditor = null;
+    }
+
+    if (!state.isDrawingMode) {
+      setDrawingMode(true);
+    }
+
+    replayStrokes();
+    updateToolbarState();
+  }
+
+  function toggleCanvasMode() {
+    setCanvasMode(state.canvasMode === 'whiteboard' ? 'page' : 'whiteboard');
+  }
+
   function updateToolbarState() {
     if (!state.toolbarElements) {
       return;
@@ -2038,6 +2105,10 @@
     state.toolbarElements.rectButton.classList.toggle('is-active', state.activeTool === 'rect');
     state.toolbarElements.arrowButton.classList.toggle('is-active', state.activeTool === 'arrow');
     state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
+    state.toolbarElements.whiteboardButton.classList.toggle(
+      'is-active',
+      state.canvasMode === 'whiteboard'
+    );
     state.toolbarElements.annotateToggleButton.classList.toggle('is-active', state.isDrawingMode);
     state.toolbarElements.sizeToggle.classList.toggle('is-active', state.isSizeExpanded);
     state.toolbarElements.toolbar.classList.toggle('is-drawing', state.isDrawingMode);
@@ -2048,15 +2119,17 @@
     state.toolbarElements.quickMenu.hidden = !state.showQuickMenu;
     state.toolbarElements.panel.hidden = !state.isToolbarExpanded;
     state.toolbarElements.launcherTool.textContent =
-      state.activeTool === 'text'
-        ? 'T'
-        : state.activeTool === 'arrow'
-          ? 'A'
-          : state.activeTool === 'rect'
-            ? 'R'
-            : state.activeTool === 'eraser'
-              ? 'E'
-              : 'P';
+      state.canvasMode === 'whiteboard'
+        ? 'WB'
+        : state.activeTool === 'text'
+          ? 'T'
+          : state.activeTool === 'arrow'
+            ? 'A'
+            : state.activeTool === 'rect'
+              ? 'R'
+              : state.activeTool === 'eraser'
+                ? 'E'
+                : 'P';
     state.toolbarElements.launcher.classList.toggle('is-annotating', state.isDrawingMode);
     state.toolbarElements.launcher.style.borderColor = state.brushColor;
     state.toolbarElements.launcher.style.boxShadow = state.isDrawingMode
@@ -2099,6 +2172,7 @@
     state.toolbarElements.textButton.disabled = !state.isDrawingMode;
     state.toolbarElements.undoButton.disabled = !state.isDrawingMode;
     state.toolbarElements.clearButton.disabled = !state.isDrawingMode;
+    state.toolbarElements.whiteboardButton.disabled = !state.isDrawingMode;
     state.toolbarElements.shortcutsButton.disabled = !state.isDrawingMode;
     state.toolbarElements.quickUndoButton.disabled = !state.isDrawingMode;
     state.toolbarElements.quickClearButton.disabled = !state.isDrawingMode;
@@ -2224,6 +2298,12 @@
               <path d="M8 18h8" />
             </svg>
           </button>
+          <button class="bbrush-icon-button" data-role="mode-whiteboard" aria-label="Whiteboard mode" title="Toggle whiteboard (W)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="5" width="16" height="12" rx="2" />
+              <path d="M8 19h8" />
+            </svg>
+          </button>
           <button class="bbrush-icon-button" data-role="undo" aria-label="Undo" title="Undo (Ctrl/Cmd+Z)">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M9 8L5 12l4 4" />
@@ -2255,6 +2335,7 @@
             <span>A - Arrow</span>
             <span>R - Rectangle</span>
             <span>T - Text</span>
+            <span>W - Toggle whiteboard</span>
             <span>Alt/Option + Drag (Text) - Duplicate text</span>
             <span>Ctrl/Cmd + Z - Undo</span>
             <span>C - Clear screen</span>
@@ -2294,6 +2375,7 @@
     const rectButton = shadowRoot.querySelector('[data-role="tool-rect"]');
     const arrowButton = shadowRoot.querySelector('[data-role="tool-arrow"]');
     const textButton = shadowRoot.querySelector('[data-role="tool-text"]');
+    const whiteboardButton = shadowRoot.querySelector('[data-role="mode-whiteboard"]');
     const toolbar = shadowRoot.querySelector('.bbrush-toolbar');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
     const clearButton = shadowRoot.querySelector('[data-role="clear"]');
@@ -2417,6 +2499,10 @@
       setActiveTool('text');
     });
 
+    whiteboardButton.addEventListener('click', () => {
+      toggleCanvasMode();
+    });
+
     dragHandle.addEventListener('pointerdown', (event) => {
       state.isDraggingToolbar = true;
       state.dragOffsetX = event.clientX - state.toolbarHost.offsetLeft;
@@ -2493,6 +2579,7 @@
       rectButton,
       arrowButton,
       textButton,
+      whiteboardButton,
       toolbar,
       annotateToggleButton,
       undoButton,

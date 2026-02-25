@@ -7,6 +7,7 @@
 - Pen tool for freehand drawing
 - Hold `Shift` while drawing with pen to constrain to a straight line
 - Eraser tool that removes complete objects (brush strokes, text, arrows, rectangles)
+- In-tab whiteboard mode toggle (`W`) with a separate drawing scene
 - Rectangle tool
 - Rectangle drag and resize with selection handles
 - Arrow tool
@@ -27,6 +28,7 @@
 
 - Click the extension icon to enable/disable the overlay on the active tab.
 - Use the toolbar to switch tools and adjust color/size.
+- Switch to whiteboard mode with `W` (or toolbar button) to draw on a clean board, then switch back to page annotations anytime.
 
 ### Keyboard Shortcuts
 
@@ -37,6 +39,7 @@
 - `R`: Rectangle tool
 - `A`: Arrow tool
 - `T`: Text tool
+- `W`: Toggle whiteboard mode
 - `Alt/Option + Drag` (text): Duplicate text
 - `Ctrl/Cmd + Z`: Undo
 - `C`: Clear
