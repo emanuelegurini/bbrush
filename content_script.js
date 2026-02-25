@@ -26,6 +26,8 @@
     canvasMode: 'page',
     activeTool: 'brush',
     isPointerDown: false,
+    isSpacePressed: false,
+    isTemporaryPassthrough: false,
     eraserDidMutate: false,
     brushColor: '#ff00bb',
     penSize: 4,
@@ -51,7 +53,8 @@
     interactionStartArrow: null,
     interactionStartRect: null,
     history: [],
-    nextTextId: 1
+    nextTextId: 1,
+    lastLocationHref: window.location.href
   };
 
   function getSceneState(mode) {
@@ -122,6 +125,65 @@
       x: totals.x / samples.length,
       y: totals.y / samples.length
     };
+  }
+
+  function isSpaceShortcut(event) {
+    return event.code === 'Space' || event.key === ' ';
+  }
+
+  function isEditableTarget(target) {
+    if (!target || !(target instanceof Element)) {
+      return false;
+    }
+
+    const element = target;
+    if (element.isContentEditable) {
+      return true;
+    }
+
+    const tag = element.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  }
+
+  function setTemporaryPassthrough(active) {
+    if (!state.canvas || state.isTemporaryPassthrough === active) {
+      return;
+    }
+
+    state.isTemporaryPassthrough = active;
+    state.canvas.style.pointerEvents = active ? 'none' : state.isDrawingMode ? 'auto' : 'none';
+    document.body.style.cursor = active ? '' : state.isDrawingMode ? 'crosshair' : '';
+
+    if (!active) {
+      updateCanvasCursor();
+    }
+  }
+
+  function releaseTemporaryPassthrough() {
+    if (state.isTemporaryPassthrough) {
+      setTemporaryPassthrough(false);
+    }
+  }
+
+  function forceReleaseTemporaryPassthrough() {
+    state.isSpacePressed = false;
+    releaseTemporaryPassthrough();
+  }
+
+  function handleLocationChange() {
+    if (!state.enabled) {
+      state.lastLocationHref = window.location.href;
+      return;
+    }
+
+    if (state.lastLocationHref === window.location.href) {
+      return;
+    }
+
+    state.lastLocationHref = window.location.href;
+    if (!state.isSpacePressed) {
+      releaseTemporaryPassthrough();
+    }
   }
 
   function getEraserCursor(size) {
@@ -1889,6 +1951,26 @@
       return;
     }
 
+    if (state.isTemporaryPassthrough && !isSpaceShortcut(event)) {
+      if (!state.isSpacePressed) {
+        releaseTemporaryPassthrough();
+      }
+    }
+
+    if (
+      isSpaceShortcut(event) &&
+      state.isDrawingMode &&
+      !state.isPointerDown &&
+      state.interactionMode === 'none' &&
+      !state.isTemporaryPassthrough &&
+      !isEditableTarget(event.target)
+    ) {
+      state.isSpacePressed = true;
+      setTemporaryPassthrough(true);
+      event.preventDefault();
+      return;
+    }
+
     const key = event.key.toLowerCase();
     const undoPressed = (event.ctrlKey || event.metaKey) && key === 'z';
 
@@ -1907,6 +1989,10 @@
     }
 
     if (!state.isDrawingMode) {
+      return;
+    }
+
+    if (state.isTemporaryPassthrough) {
       return;
     }
 
@@ -2015,6 +2101,20 @@
       updateToolbarState();
       event.preventDefault();
     }
+  }
+
+  function handleKeyUp(event) {
+    if (!state.enabled) {
+      return;
+    }
+
+    if (!isSpaceShortcut(event)) {
+      return;
+    }
+
+    state.isSpacePressed = false;
+    releaseTemporaryPassthrough();
+    event.preventDefault();
   }
 
   function createCanvas() {
@@ -2340,6 +2440,7 @@
             <span>Alt/Option + Drag (Text) - Duplicate text</span>
             <span>Ctrl/Cmd + Z - Undo</span>
             <span>C - Clear screen</span>
+            <span>Hold Space - Temporary click-through</span>
             <span>Hold Shift + Drag (Pen) - Straight line</span>
             <span>[ / ] - Active tool size</span>
             <span>Esc - Close/cancel</span>
@@ -2548,6 +2649,12 @@
     document.addEventListener(
       'pointerdown',
       (event) => {
+        if (state.isTemporaryPassthrough) {
+          if (!state.isSpacePressed) {
+            releaseTemporaryPassthrough();
+          }
+        }
+
         if (!state.showQuickMenu) {
           return;
         }
@@ -2633,6 +2740,7 @@
     state.isDraggingLauncher = false;
     state.launcherPointerId = null;
     state.suppressNextLauncherClick = false;
+    forceReleaseTemporaryPassthrough();
 
     if (state.textEditor && state.textEditor.element) {
       state.textEditor.element.remove();
@@ -2665,8 +2773,13 @@
       replayStrokes();
     }
 
-    state.canvas.style.pointerEvents = active ? 'auto' : 'none';
-    document.body.style.cursor = active ? 'crosshair' : '';
+    if (!active) {
+      state.isSpacePressed = false;
+      state.isTemporaryPassthrough = false;
+    }
+
+    state.canvas.style.pointerEvents = active && !state.isTemporaryPassthrough ? 'auto' : 'none';
+    document.body.style.cursor = active && !state.isTemporaryPassthrough ? 'crosshair' : '';
     updateCanvasCursor();
   }
 
@@ -2727,6 +2840,16 @@
   });
 
   document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('keyup', handleKeyUp);
+  window.addEventListener('keyup', handleKeyUp);
+  window.addEventListener('blur', forceReleaseTemporaryPassthrough);
+  window.addEventListener('hashchange', handleLocationChange);
+  window.addEventListener('popstate', handleLocationChange);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') {
+      forceReleaseTemporaryPassthrough();
+    }
+  });
   window.addEventListener('resize', handleResize);
 
   window.__BBRUSH__ = {

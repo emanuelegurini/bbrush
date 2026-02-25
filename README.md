@@ -40,6 +40,7 @@
 - `A`: Arrow tool
 - `T`: Text tool
 - `W`: Toggle whiteboard mode
+- Hold `Space`: Temporary click-through (interact with page without disabling tools)
 - `Alt/Option + Drag` (text): Duplicate text
 - `Ctrl/Cmd + Z`: Undo
 - `C`: Clear
