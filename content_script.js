@@ -44,6 +44,7 @@
     interactionPointerId: null,
     interactionStartPoint: null,
     interactionStartText: null,
+    textCloneCreatedOnDrag: false,
     interactionStartArrow: null,
     interactionStartRect: null,
     history: [],
@@ -427,8 +428,31 @@
     state.interactionPointerId = null;
     state.interactionStartPoint = null;
     state.interactionStartText = null;
+    state.textCloneCreatedOnDrag = false;
     state.interactionStartArrow = null;
     state.interactionStartRect = null;
+  }
+
+  function cloneTextEntry(entry) {
+    if (!entry || entry.type !== 'text') {
+      return null;
+    }
+
+    const clone = {
+      id: state.nextTextId,
+      type: 'text',
+      text: entry.text,
+      x: entry.x,
+      y: entry.y,
+      color: entry.color,
+      fontSize: entry.fontSize,
+      width: entry.width,
+      height: entry.height
+    };
+
+    state.nextTextId += 1;
+    state.strokes.push(clone);
+    return clone;
   }
 
   function isTextTransformChanged(textEntry, startText) {
@@ -1403,6 +1427,7 @@
     }
 
     event.preventDefault();
+    state.textCloneCreatedOnDrag = false;
 
     const selected = getSelectedTextEntry();
     if (selected) {
@@ -1425,17 +1450,28 @@
       }
 
       if (hitTestTextBody(point, selected)) {
+        let textForDrag = selected;
+        if (event.altKey) {
+          const clone = cloneTextEntry(selected);
+          if (clone) {
+            textForDrag = clone;
+            state.selectedTextId = clone.id;
+            state.textCloneCreatedOnDrag = true;
+          }
+        }
+
         state.interactionMode = 'drag-text';
         state.interactionPointerId = event.pointerId;
         state.interactionStartPoint = point;
         state.interactionStartText = {
-          x: selected.x,
-          y: selected.y,
-          width: selected.width,
-          height: selected.height,
-          fontSize: selected.fontSize
+          x: textForDrag.x,
+          y: textForDrag.y,
+          width: textForDrag.width,
+          height: textForDrag.height,
+          fontSize: textForDrag.fontSize
         };
         state.canvas.setPointerCapture(event.pointerId);
+        replayStrokes();
         updateCanvasCursor(point);
         return;
       }
@@ -1443,16 +1479,25 @@
 
     const clickedText = findTopTextAtPoint(point);
     if (clickedText) {
-      state.selectedTextId = clickedText.id;
+      let textForDrag = clickedText;
+      if (event.altKey) {
+        const clone = cloneTextEntry(clickedText);
+        if (clone) {
+          textForDrag = clone;
+          state.textCloneCreatedOnDrag = true;
+        }
+      }
+
+      state.selectedTextId = textForDrag.id;
       state.interactionMode = 'drag-text';
       state.interactionPointerId = event.pointerId;
       state.interactionStartPoint = point;
       state.interactionStartText = {
-        x: clickedText.x,
-        y: clickedText.y,
-        width: clickedText.width,
-        height: clickedText.height,
-        fontSize: clickedText.fontSize
+        x: textForDrag.x,
+        y: textForDrag.y,
+        width: textForDrag.width,
+        height: textForDrag.height,
+        fontSize: textForDrag.fontSize
       };
       state.canvas.setPointerCapture(event.pointerId);
       replayStrokes();
@@ -1784,7 +1829,7 @@
       selected &&
       (state.interactionMode === 'drag-text' || state.interactionMode === 'resize-text') &&
       state.interactionStartText &&
-      isTextTransformChanged(selected, state.interactionStartText)
+      (isTextTransformChanged(selected, state.interactionStartText) || state.textCloneCreatedOnDrag)
     ) {
       pushHistorySnapshot();
       didCommitTransform = true;
@@ -2210,6 +2255,7 @@
             <span>A - Arrow</span>
             <span>R - Rectangle</span>
             <span>T - Text</span>
+            <span>Alt/Option + Drag (Text) - Duplicate text</span>
             <span>Ctrl/Cmd + Z - Undo</span>
             <span>C - Clear screen</span>
             <span>Hold Shift + Drag (Pen) - Straight line</span>
