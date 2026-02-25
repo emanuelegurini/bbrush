@@ -1159,10 +1159,7 @@
     state.selectedRectId = null;
     clearInteractionState();
     pushHistorySnapshot();
-
-    if (state.canvas && state.context) {
-      state.context.clearRect(0, 0, state.canvas.width, state.canvas.height);
-    }
+    replayStrokes();
   }
 
   function applyTextResize(point) {
@@ -1906,6 +1903,10 @@
         event.preventDefault();
       }
 
+      return;
+    }
+
+    if (!state.isDrawingMode) {
       return;
     }
 
