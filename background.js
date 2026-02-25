@@ -23,20 +23,40 @@ async function getOverlayStatus(tabId) {
   return Boolean(response && response.overlayEnabled);
 }
 
-async function activateOverlay(tabId) {
+async function activateOverlay(tabId, drawingMode = false) {
   try {
     await ensureContentScript(tabId);
   } catch {
     return { ok: false, error: 'unsupported_url' };
   }
 
-  const response = await sendTabMessage(tabId, { type: 'BBRUSH_ENABLE_OVERLAY' });
+  const response = await sendTabMessage(tabId, {
+    type: 'BBRUSH_ENABLE_OVERLAY',
+    drawingMode
+  });
 
   if (!response) {
     return { ok: false, error: 'injection_failed' };
   }
 
   return { ok: true };
+}
+
+async function toggleOverlayForTab(tabId) {
+  const isActive = await getOverlayStatus(tabId);
+
+  if (isActive) {
+    await sendTabMessage(tabId, { type: 'BBRUSH_DISABLE_OVERLAY' });
+    return { ok: true, active: false };
+  }
+
+  const activation = await activateOverlay(tabId, true);
+
+  if (!activation.ok) {
+    return { ok: false, error: activation.error };
+  }
+
+  return { ok: true, active: true };
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -60,29 +80,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   (async () => {
-    const isActive = await getOverlayStatus(tabId);
-
-    if (isActive) {
-      await sendTabMessage(tabId, { type: 'BBRUSH_DISABLE_OVERLAY' });
-      sendResponse({ ok: true, active: false });
-      return;
-    }
-
-    const activation = await activateOverlay(tabId);
-
-    if (!activation.ok) {
-      sendResponse({ ok: false, error: activation.error });
-      return;
-    }
-
-    sendResponse({ ok: true, active: true });
+    const result = await toggleOverlayForTab(tabId);
+    sendResponse(result);
   })();
 
   return true;
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'toggle-drawing-mode') {
+  if (command !== 'toggle-drawing-mode' && command !== 'toggle-toolbar-panel') {
     return;
   }
 
@@ -94,15 +100,36 @@ chrome.commands.onCommand.addListener(async (command) => {
 
   const tabId = activeTab.id;
 
-  const isActive = await getOverlayStatus(tabId);
+  let isActive = await getOverlayStatus(tabId);
 
   if (!isActive) {
-    const activation = await activateOverlay(tabId);
+    const activation = await activateOverlay(tabId, command === 'toggle-drawing-mode');
 
     if (!activation.ok) {
       return;
     }
+
+    isActive = true;
+
+    if (command === 'toggle-drawing-mode') {
+      return;
+    }
   }
 
-  await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_DRAWING_MODE' });
+  if (command === 'toggle-toolbar-panel') {
+    await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_PANEL' });
+    return;
+  }
+
+  if (command === 'toggle-drawing-mode' && isActive) {
+    await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_DRAWING_MODE' });
+  }
+});
+
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab || typeof tab.id !== 'number') {
+    return;
+  }
+
+  await toggleOverlayForTab(tab.id);
 });

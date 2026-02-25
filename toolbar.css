@@ -1,24 +1,163 @@
+:host {
+  --bb-accent: #ff00bb;
+  --bb-surface: rgba(11, 18, 27, 0.94);
+  --bb-surface-strong: rgba(7, 12, 19, 0.97);
+  --bb-border: rgba(179, 194, 211, 0.28);
+  --bb-text: #f8fafc;
+  --bb-text-muted: #c6d2df;
+  --bb-btn: rgba(146, 164, 185, 0.16);
+  --bb-btn-hover: rgba(146, 164, 185, 0.26);
+  --bb-btn-active: color-mix(in srgb, var(--bb-accent) 28%, #101826);
+  --bb-disabled: rgba(129, 146, 165, 0.26);
+  --bb-shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.28);
+  --bb-shadow-strong: 0 14px 34px rgba(0, 0, 0, 0.36);
+}
+
+.bbrush-launcher-wrap {
+  position: relative;
+}
+
+.bbrush-launcher {
+  align-items: center;
+  background: linear-gradient(160deg, rgba(18, 27, 40, 0.98), rgba(8, 13, 20, 0.96));
+  border: 2px solid var(--bb-accent);
+  border-radius: 999px;
+  box-shadow: var(--bb-shadow-soft);
+  color: var(--bb-text);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  height: 44px;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  padding: 0;
+  position: relative;
+  transition:
+    transform 140ms ease,
+    filter 160ms ease;
+  width: 44px;
+}
+
+.bbrush-launcher:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.bbrush-launcher:active {
+  transform: translateY(0);
+}
+
+.bbrush-launcher.is-annotating {
+  background: linear-gradient(160deg, rgba(22, 34, 49, 1), rgba(10, 15, 23, 0.98));
+}
+
+.bbrush-launcher-tool {
+  align-items: center;
+  background: color-mix(in srgb, var(--bb-accent) 78%, #ffffff);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  color: #0b1120;
+  display: inline-flex;
+  font-size: 9px;
+  font-weight: 800;
+  height: 14px;
+  justify-content: center;
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  width: 14px;
+}
+
+.bbrush-quick-menu {
+  background: var(--bb-surface-strong);
+  border: 1px solid var(--bb-border);
+  border-radius: 10px;
+  box-shadow: var(--bb-shadow-strong);
+  display: grid;
+  gap: 6px;
+  left: 0;
+  min-width: 148px;
+  opacity: 0;
+  padding: 8px;
+  pointer-events: none;
+  position: absolute;
+  top: 52px;
+  transform: translateY(-4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  z-index: 2;
+}
+
+.bbrush-quick-menu.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.bbrush-quick-menu button {
+  background: var(--bb-btn);
+  border: 1px solid rgba(182, 196, 214, 0.16);
+  border-radius: 7px;
+  color: var(--bb-text);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.bbrush-quick-menu button:hover {
+  background: var(--bb-btn-hover);
+}
+
+.bbrush-panel {
+  left: 56px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-6px, -50%);
+  visibility: hidden;
+  transition:
+    opacity 170ms ease,
+    transform 170ms ease,
+    visibility 170ms ease;
+  z-index: 1;
+}
+
+.bbrush-panel.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, -50%);
+  visibility: visible;
+}
+
 .bbrush-toolbar {
   align-items: center;
-  backdrop-filter: blur(8px);
-  background: rgba(16, 24, 32, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  background: var(--bb-surface);
+  border: 1px solid var(--bb-border);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--bb-shadow-soft);
   display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
+  max-width: min(640px, calc(100vw - 56px));
+  overflow-x: auto;
   padding: 10px;
 }
 
 .bbrush-toolbar.is-drawing {
-  border-color: rgba(74, 162, 238, 0.9);
+  border-color: color-mix(in srgb, var(--bb-accent) 56%, #ffffff);
   box-shadow:
-    0 0 0 2px rgba(23, 98, 166, 0.38),
-    0 10px 30px rgba(0, 0, 0, 0.22);
+    0 0 0 2px color-mix(in srgb, var(--bb-accent) 30%, transparent),
+    var(--bb-shadow-soft);
 }
 
 .bbrush-toolbar-handle {
-  color: #cbd5e1;
+  color: var(--bb-text-muted);
   cursor: grab;
   font-size: 11px;
   font-weight: 700;
@@ -30,10 +169,23 @@
 
 .bbrush-toolbar-field {
   align-items: center;
-  color: #e2e8f0;
+  color: var(--bb-text-muted);
   display: flex;
   font-size: 11px;
   gap: 6px;
+}
+
+.bbrush-visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .bbrush-toolbar-field input[type='color'] {
@@ -46,9 +198,9 @@
 }
 
 .bbrush-toolbar-field input[type='range'] {
-  accent-color: #1762a6;
+  accent-color: var(--bb-accent);
   cursor: pointer;
-  width: 84px;
+  width: 90px;
 }
 
 .bbrush-toolbar-size {
@@ -56,43 +208,105 @@
   opacity: 0;
   overflow: hidden;
   transition:
-    max-width 0.2s ease,
-    opacity 0.2s ease;
+    max-width 180ms ease,
+    opacity 180ms ease;
 }
 
 .bbrush-toolbar-size.is-expanded {
-  max-width: 180px;
+  max-width: 190px;
   opacity: 1;
 }
 
 .bbrush-toolbar button {
-  background: #1762a6;
-  border: none;
+  background: var(--bb-btn);
+  border: 1px solid rgba(182, 196, 214, 0.16);
   border-radius: 8px;
-  color: #fff;
+  color: var(--bb-text);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   line-height: 1;
   padding: 8px 10px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.bbrush-icon-button {
+  align-items: center;
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  min-width: 34px;
+  padding: 0;
+}
+
+.bbrush-icon-button svg {
+  fill: none;
+  height: 16px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 16px;
 }
 
 .bbrush-toolbar button:hover {
-  background: #0f4f89;
+  background: var(--bb-btn-hover);
+}
+
+.bbrush-toolbar button:active {
+  transform: translateY(1px);
 }
 
 .bbrush-toolbar button.is-active {
-  background: #0a84ff;
+  background: var(--bb-btn-active);
+  border-color: color-mix(in srgb, var(--bb-accent) 65%, #ffffff);
 }
 
-.bbrush-toolbar button:disabled {
-  background: #516172;
-  color: #c2ccd6;
+.bbrush-toolbar [data-role='annotate-toggle'] {
+  background: color-mix(in srgb, var(--bb-accent) 18%, #121a28);
+  border-color: color-mix(in srgb, var(--bb-accent) 55%, #ffffff);
+}
+
+.bbrush-toolbar [data-role='annotate-toggle'].is-active {
+  background: color-mix(in srgb, var(--bb-accent) 32%, #111827);
+}
+
+.bbrush-toolbar button:disabled,
+.bbrush-quick-menu button:disabled {
+  background: var(--bb-disabled);
+  border-color: transparent;
+  color: #bcc8d5;
   cursor: not-allowed;
-  opacity: 0.8;
+  opacity: 0.82;
 }
 
 .bbrush-toolbar-field input:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.bbrush-shortcuts {
+  background: rgba(8, 14, 20, 0.96);
+  border: 1px solid var(--bb-border);
+  border-radius: 8px;
+  color: var(--bb-text-muted);
+  display: none;
+  font-size: 11px;
+  gap: 4px;
+  min-width: 220px;
+  padding: 8px;
+  width: 100%;
+}
+
+.bbrush-shortcuts.is-open {
+  display: grid;
+}
+
+.bbrush-shortcuts strong {
+  color: var(--bb-text);
+  font-size: 12px;
+  margin-bottom: 2px;
 }

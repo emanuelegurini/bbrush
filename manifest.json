@@ -9,7 +9,6 @@
   },
   "action": {
     "default_title": "bbrush",
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -28,6 +27,13 @@
         "mac": "Alt+D"
       },
       "description": "Toggle drawing mode"
+    },
+    "toggle-toolbar-panel": {
+      "suggested_key": {
+        "default": "Alt+Shift+B",
+        "mac": "Alt+Shift+B"
+      },
+      "description": "Toggle bbrush toolbar panel"
     }
   },
   "web_accessible_resources": [
