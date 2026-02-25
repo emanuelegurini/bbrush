@@ -5,6 +5,7 @@
 
   const ANCHOR_SIZE = 10;
   const MIN_TEXT_SIZE = 10;
+  const eraserCursorCache = new Map();
 
   const state = {
     enabled: false,
@@ -24,6 +25,7 @@
     isDrawingMode: false,
     activeTool: 'brush',
     isPointerDown: false,
+    eraserDidMutate: false,
     brushColor: '#ff00bb',
     penSize: 4,
     textSize: 18,
@@ -102,6 +104,21 @@
       x: totals.x / samples.length,
       y: totals.y / samples.length
     };
+  }
+
+  function getEraserCursor(size) {
+    const diameter = Math.max(12, Math.min(48, Math.round(size * 2 + 4)));
+
+    if (eraserCursorCache.has(diameter)) {
+      return eraserCursorCache.get(diameter);
+    }
+
+    const center = Math.floor(diameter / 2);
+    const radius = Math.max(3, center - 2);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${diameter}" height="${diameter}" viewBox="0 0 ${diameter} ${diameter}"><circle cx="${center}" cy="${center}" r="${radius}" fill="rgba(255,255,255,0.12)" stroke="rgba(17,24,39,0.95)" stroke-width="2"/></svg>`;
+    const cursor = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${center} ${center}, crosshair`;
+    eraserCursorCache.set(diameter, cursor);
+    return cursor;
   }
 
   function getTextFontSize() {
@@ -586,6 +603,108 @@
     state.context.stroke();
   }
 
+  function hitTestBrushStroke(point, entry, radius) {
+    if (!entry.points || entry.points.length === 0) {
+      return false;
+    }
+
+    const threshold = radius + entry.size / 2;
+
+    if (entry.points.length === 1) {
+      return Math.hypot(point.x - entry.points[0].x, point.y - entry.points[0].y) <= threshold;
+    }
+
+    for (let i = 0; i < entry.points.length - 1; i += 1) {
+      const distance = distancePointToSegment(point, entry.points[i], entry.points[i + 1]);
+      if (distance <= threshold) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function hitTestRectAny(point, entry, radius) {
+    const bounds = getRectBounds(entry);
+    return (
+      point.x >= bounds.left - radius &&
+      point.x <= bounds.right + radius &&
+      point.y >= bounds.top - radius &&
+      point.y <= bounds.bottom + radius
+    );
+  }
+
+  function hitTestTextAny(point, entry, radius) {
+    const bounds = getTextBounds(entry);
+    return (
+      point.x >= bounds.left - radius &&
+      point.x <= bounds.right + radius &&
+      point.y >= bounds.top - radius &&
+      point.y <= bounds.bottom + radius
+    );
+  }
+
+  function hitTestArrowAny(point, entry, radius) {
+    const distance = distancePointToSegment(
+      point,
+      { x: entry.x1, y: entry.y1 },
+      { x: entry.x2, y: entry.y2 }
+    );
+    return distance <= radius + entry.size / 2 + 2;
+  }
+
+  function isEntryHitByEraser(point, radius, entry) {
+    if (!entry) {
+      return false;
+    }
+
+    if (entry.type === 'brush') {
+      return hitTestBrushStroke(point, entry, radius);
+    }
+
+    if (entry.type === 'rect') {
+      return hitTestRectAny(point, entry, radius);
+    }
+
+    if (entry.type === 'arrow') {
+      return hitTestArrowAny(point, entry, radius);
+    }
+
+    if (entry.type === 'text') {
+      return hitTestTextAny(point, entry, radius);
+    }
+
+    return false;
+  }
+
+  function eraseTopEntryAtPoint(point) {
+    const radius = Math.max(1, state.penSize / 2);
+
+    for (let i = state.strokes.length - 1; i >= 0; i -= 1) {
+      const entry = state.strokes[i];
+      if (!isEntryHitByEraser(point, radius, entry)) {
+        continue;
+      }
+
+      if (state.selectedTextId === entry.id) {
+        state.selectedTextId = null;
+      }
+
+      if (state.selectedArrowId === entry.id) {
+        state.selectedArrowId = null;
+      }
+
+      if (state.selectedRectId === entry.id) {
+        state.selectedRectId = null;
+      }
+
+      state.strokes.splice(i, 1);
+      return true;
+    }
+
+    return false;
+  }
+
   function drawTextEntry(entry) {
     if (!state.context || !entry || !entry.text) {
       return;
@@ -748,6 +867,11 @@
 
     if (state.activeTool === 'brush') {
       state.canvas.style.cursor = 'crosshair';
+      return;
+    }
+
+    if (state.activeTool === 'eraser') {
+      state.canvas.style.cursor = getEraserCursor(state.penSize);
       return;
     }
 
@@ -1015,6 +1139,20 @@
       return;
     }
 
+    if (state.activeTool === 'eraser') {
+      state.selectedTextId = null;
+      state.selectedArrowId = null;
+      state.selectedRectId = null;
+      clearInteractionState();
+      state.isPointerDown = true;
+      state.currentStroke = null;
+      state.eraserDidMutate = eraseTopEntryAtPoint(point);
+      if (state.eraserDidMutate) {
+        replayStrokes();
+      }
+      return;
+    }
+
     if (state.activeTool === 'rect') {
       event.preventDefault();
       const selectedRect = getSelectedRectEntry();
@@ -1242,6 +1380,19 @@
       return;
     }
 
+    if (state.activeTool === 'eraser') {
+      if (!state.isPointerDown) {
+        return;
+      }
+
+      const didMutate = eraseTopEntryAtPoint(point);
+      if (didMutate) {
+        state.eraserDidMutate = true;
+        replayStrokes();
+      }
+      return;
+    }
+
     if (state.activeTool === 'rect') {
       if (
         state.interactionMode !== 'none' &&
@@ -1393,6 +1544,18 @@
       state.currentStroke = null;
       state.isPointerDown = false;
       replayStrokes();
+      return;
+    }
+
+    if (state.activeTool === 'eraser') {
+      if (state.eraserDidMutate) {
+        pushHistorySnapshot();
+      }
+
+      state.currentStroke = null;
+      state.isPointerDown = false;
+      state.eraserDidMutate = false;
+      updateCanvasCursor();
       return;
     }
 
@@ -1557,6 +1720,12 @@
       return;
     }
 
+    if (key === 'e') {
+      setActiveTool('eraser');
+      event.preventDefault();
+      return;
+    }
+
     if (key === 't') {
       setActiveTool('text');
       event.preventDefault();
@@ -1696,6 +1865,7 @@
     const activeSize = state.activeTool === 'text' ? state.textSize : state.penSize;
 
     state.toolbarElements.drawButton.classList.toggle('is-active', state.activeTool === 'brush');
+    state.toolbarElements.eraserButton.classList.toggle('is-active', state.activeTool === 'eraser');
     state.toolbarElements.rectButton.classList.toggle('is-active', state.activeTool === 'rect');
     state.toolbarElements.arrowButton.classList.toggle('is-active', state.activeTool === 'arrow');
     state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
@@ -1715,14 +1885,20 @@
           ? 'A'
           : state.activeTool === 'rect'
             ? 'R'
-            : 'P';
+            : state.activeTool === 'eraser'
+              ? 'E'
+              : 'P';
     state.toolbarElements.launcher.classList.toggle('is-annotating', state.isDrawingMode);
     state.toolbarElements.launcher.style.borderColor = state.brushColor;
     state.toolbarElements.launcher.style.boxShadow = state.isDrawingMode
       ? `0 0 0 3px ${state.brushColor}55, 0 10px 24px rgba(0, 0, 0, 0.26)`
       : `0 10px 24px rgba(0, 0, 0, 0.26)`;
     state.toolbarElements.sizeLabel.textContent =
-      state.activeTool === 'text' ? 'Text size' : 'Pen size';
+      state.activeTool === 'text'
+        ? 'Text size'
+        : state.activeTool === 'eraser'
+          ? 'Eraser size'
+          : 'Pen size';
     state.toolbarElements.annotateToggleButton.title = state.isDrawingMode
       ? 'Disable annotation'
       : 'Enable annotation';
@@ -1748,6 +1924,7 @@
     state.toolbarElements.sizeToggle.disabled = !state.isDrawingMode;
     state.toolbarElements.sizeInput.disabled = !state.isDrawingMode;
     state.toolbarElements.drawButton.disabled = !state.isDrawingMode;
+    state.toolbarElements.eraserButton.disabled = !state.isDrawingMode;
     state.toolbarElements.rectButton.disabled = !state.isDrawingMode;
     state.toolbarElements.arrowButton.disabled = !state.isDrawingMode;
     state.toolbarElements.textButton.disabled = !state.isDrawingMode;
@@ -1779,6 +1956,13 @@
     }
 
     if (tool === 'brush' || tool === 'rect') {
+      state.selectedTextId = null;
+      state.selectedArrowId = null;
+      state.selectedRectId = null;
+      clearInteractionState();
+    }
+
+    if (tool === 'eraser') {
       state.selectedTextId = null;
       state.selectedArrowId = null;
       state.selectedRectId = null;
@@ -1847,6 +2031,12 @@
               <path d="M13.5 6.5l4 4" />
             </svg>
           </button>
+          <button class="bbrush-icon-button" data-role="tool-eraser" aria-label="Eraser tool" title="Eraser tool (E)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 16l6-8 6 6-6 8H7z" />
+              <path d="M4 20h16" />
+            </svg>
+          </button>
           <button class="bbrush-icon-button" data-role="tool-arrow" aria-label="Arrow tool" title="Arrow tool (A)">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 20L20 4" />
@@ -1892,6 +2082,7 @@
             <span>Alt + D - Toggle annotate</span>
             <span>Alt + Shift + B - Toggle panel</span>
             <span>B - Pen</span>
+            <span>E - Eraser</span>
             <span>A - Arrow</span>
             <span>R - Rectangle</span>
             <span>T - Text</span>
@@ -1929,6 +2120,7 @@
     const sizeLabel = shadowRoot.querySelector('[data-role="size-label"]');
     const sizeInput = shadowRoot.querySelector('[data-role="size"]');
     const drawButton = shadowRoot.querySelector('[data-role="tool-brush"]');
+    const eraserButton = shadowRoot.querySelector('[data-role="tool-eraser"]');
     const rectButton = shadowRoot.querySelector('[data-role="tool-rect"]');
     const arrowButton = shadowRoot.querySelector('[data-role="tool-arrow"]');
     const textButton = shadowRoot.querySelector('[data-role="tool-text"]');
@@ -2039,6 +2231,10 @@
       setActiveTool('brush');
     });
 
+    eraserButton.addEventListener('click', () => {
+      setActiveTool('eraser');
+    });
+
     arrowButton.addEventListener('click', () => {
       setActiveTool('arrow');
     });
@@ -2123,6 +2319,7 @@
       sizeLabel,
       sizeInput,
       drawButton,
+      eraserButton,
       rectButton,
       arrowButton,
       textButton,
