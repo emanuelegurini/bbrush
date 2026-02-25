@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "private": true,
   "type": "commonjs",
   "devDependencies": {
