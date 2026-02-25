@@ -6,10 +6,13 @@
 
 - Pen tool for freehand drawing
 - Hold `Shift` while drawing with pen to constrain to a straight line
+- Eraser tool that removes complete objects (brush strokes, text, arrows, rectangles)
 - Rectangle tool
+- Rectangle drag and resize with selection handles
 - Arrow tool
 - Text tool with draggable/resizable text boxes
-- Draggable rectangles and arrows
+- `Alt/Option + Drag` in text mode duplicates selected text while moving
+- Draggable arrows
 - Undo and clear actions
 - Floating toolbar with shortcut help
 
@@ -30,9 +33,11 @@
 - `Alt + D`: Toggle drawing mode
 - `Alt + Shift + B`: Toggle toolbar panel
 - `B`: Pen tool
+- `E`: Eraser tool
 - `R`: Rectangle tool
 - `A`: Arrow tool
 - `T`: Text tool
+- `Alt/Option + Drag` (text): Duplicate text
 - `Ctrl/Cmd + Z`: Undo
 - `C`: Clear
 - `[ / ]`: Decrease/increase active tool size
