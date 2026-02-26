@@ -170,17 +170,46 @@
     releaseTemporaryPassthrough();
   }
 
+  function shouldExitWhiteboardOnLocationChange(previousHref, nextHref) {
+    if (!previousHref || !nextHref) {
+      return false;
+    }
+
+    try {
+      const previousUrl = new URL(previousHref);
+      const nextUrl = new URL(nextHref);
+      return (
+        previousUrl.origin !== nextUrl.origin ||
+        previousUrl.pathname !== nextUrl.pathname ||
+        previousUrl.search !== nextUrl.search
+      );
+    } catch {
+      return previousHref !== nextHref;
+    }
+  }
+
   function handleLocationChange() {
+    const nextHref = window.location.href;
+
     if (!state.enabled) {
-      state.lastLocationHref = window.location.href;
+      state.lastLocationHref = nextHref;
       return;
     }
 
-    if (state.lastLocationHref === window.location.href) {
+    if (state.lastLocationHref === nextHref) {
       return;
     }
 
-    state.lastLocationHref = window.location.href;
+    const previousHref = state.lastLocationHref;
+    state.lastLocationHref = nextHref;
+
+    if (
+      state.canvasMode === 'whiteboard' &&
+      shouldExitWhiteboardOnLocationChange(previousHref, nextHref)
+    ) {
+      setCanvasMode('page', { autoEnableDrawing: false });
+    }
+
     if (!state.isSpacePressed) {
       releaseTemporaryPassthrough();
     }
@@ -2159,7 +2188,9 @@
     updateToolbarState();
   }
 
-  function setCanvasMode(mode) {
+  function setCanvasMode(mode, options = {}) {
+    const autoEnableDrawing = options.autoEnableDrawing !== false;
+
     if (mode !== 'page' && mode !== 'whiteboard') {
       return;
     }
@@ -2182,7 +2213,7 @@
       state.textEditor = null;
     }
 
-    if (!state.isDrawingMode) {
+    if (!state.isDrawingMode && autoEnableDrawing) {
       setDrawingMode(true);
     }
 
@@ -2838,6 +2869,20 @@
       sendResponse({ ok: true, overlayEnabled: state.enabled, drawingMode: state.isDrawingMode });
     }
   });
+
+  const originalPushState = history.pushState;
+  history.pushState = function pushStateOverride(...args) {
+    const result = originalPushState.apply(this, args);
+    handleLocationChange();
+    return result;
+  };
+
+  const originalReplaceState = history.replaceState;
+  history.replaceState = function replaceStateOverride(...args) {
+    const result = originalReplaceState.apply(this, args);
+    handleLocationChange();
+    return result;
+  };
 
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup', handleKeyUp);
