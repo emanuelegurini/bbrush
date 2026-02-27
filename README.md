@@ -12,6 +12,7 @@
 - Rectangle drag and resize with selection handles
 - Arrow tool
 - Text tool with draggable/resizable text boxes
+- Highlight tool for selected page text
 - `Alt/Option + Drag` in text mode duplicates selected text while moving
 - Draggable arrows
 - Undo and clear actions
@@ -39,6 +40,8 @@
 - `R`: Rectangle tool
 - `A`: Arrow tool
 - `T`: Text tool
+- `H`: Highlight text tool
+- `Alt + Click` (highlight mode): Remove one highlight at pointer
 - `W`: Toggle whiteboard mode
 - Hold `Space`: Temporary click-through (interact with page without disabling tools)
 - `Alt/Option + Drag` (text): Duplicate text

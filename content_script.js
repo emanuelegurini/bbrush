@@ -5,6 +5,8 @@
 
   const ANCHOR_SIZE = 10;
   const MIN_TEXT_SIZE = 10;
+  const HIGHLIGHT_REGISTRY_KEY = 'bbrush-highlight';
+  const HIGHLIGHT_STYLE_ID = 'bbrush-highlight-style';
   const eraserCursorCache = new Map();
 
   const state = {
@@ -41,6 +43,7 @@
     whiteboardScene: { strokes: [], history: [] },
     strokes: [],
     textEditor: null,
+    highlightRanges: [],
     selectedTextId: null,
     selectedArrowId: null,
     selectedRectId: null,
@@ -151,12 +154,31 @@
     }
 
     state.isTemporaryPassthrough = active;
-    state.canvas.style.pointerEvents = active ? 'none' : state.isDrawingMode ? 'auto' : 'none';
-    document.body.style.cursor = active ? '' : state.isDrawingMode ? 'crosshair' : '';
+    updateOverlayInteractionState();
+  }
 
-    if (!active) {
-      updateCanvasCursor();
+  function updateOverlayInteractionState() {
+    if (!state.canvas) {
+      return;
     }
+
+    const canInteractWithCanvas =
+      state.isDrawingMode && !state.isTemporaryPassthrough && state.activeTool !== 'highlight';
+
+    state.canvas.style.pointerEvents = canInteractWithCanvas ? 'auto' : 'none';
+
+    if (!state.isDrawingMode || state.isTemporaryPassthrough) {
+      document.body.style.cursor = '';
+      return;
+    }
+
+    if (state.activeTool === 'highlight') {
+      document.body.style.cursor = 'text';
+      return;
+    }
+
+    document.body.style.cursor = 'crosshair';
+    updateCanvasCursor();
   }
 
   function releaseTemporaryPassthrough() {
@@ -228,6 +250,143 @@
     const cursor = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${center} ${center}, crosshair`;
     eraserCursorCache.set(diameter, cursor);
     return cursor;
+  }
+
+  function canUseCssHighlights() {
+    return (
+      typeof CSS !== 'undefined' && typeof Highlight !== 'undefined' && Boolean(CSS.highlights)
+    );
+  }
+
+  function ensureHighlightStyle() {
+    if (!document.head || document.getElementById(HIGHLIGHT_STYLE_ID)) {
+      return;
+    }
+
+    const style = document.createElement('style');
+    style.id = HIGHLIGHT_STYLE_ID;
+    style.textContent = `::highlight(${HIGHLIGHT_REGISTRY_KEY}) { background: rgba(255, 232, 115, 0.72); color: inherit; }`;
+    document.head.appendChild(style);
+  }
+
+  function refreshHighlightsRendering() {
+    if (!canUseCssHighlights()) {
+      return;
+    }
+
+    if (!state.enabled || state.canvasMode !== 'page' || state.highlightRanges.length === 0) {
+      CSS.highlights.delete(HIGHLIGHT_REGISTRY_KEY);
+      return;
+    }
+
+    ensureHighlightStyle();
+    const highlight = new Highlight();
+    for (const range of state.highlightRanges) {
+      highlight.add(range);
+    }
+    CSS.highlights.set(HIGHLIGHT_REGISTRY_KEY, highlight);
+  }
+
+  function clearHighlights() {
+    if (state.highlightRanges.length === 0) {
+      return;
+    }
+
+    state.highlightRanges = [];
+    refreshHighlightsRendering();
+  }
+
+  function isRangeHighlightable(range) {
+    if (!range || range.collapsed) {
+      return false;
+    }
+
+    const container = range.commonAncestorContainer;
+    const containerElement =
+      container && container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+
+    if (!containerElement || !document.body.contains(containerElement)) {
+      return false;
+    }
+
+    if (state.toolbarHost && containerElement.closest('#bbrush-toolbar-host')) {
+      return false;
+    }
+
+    if (
+      containerElement.closest(
+        'input, textarea, select, [contenteditable=""], [contenteditable="true"]'
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function highlightCurrentSelection() {
+    if (!canUseCssHighlights()) {
+      return false;
+    }
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return false;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!isRangeHighlightable(range)) {
+      return false;
+    }
+
+    state.highlightRanges.push(range.cloneRange());
+    selection.removeAllRanges();
+    refreshHighlightsRendering();
+    return true;
+  }
+
+  function getCaretPositionFromPoint(clientX, clientY) {
+    if (document.caretPositionFromPoint) {
+      const caret = document.caretPositionFromPoint(clientX, clientY);
+      if (caret && caret.offsetNode) {
+        return { node: caret.offsetNode, offset: caret.offset };
+      }
+    }
+
+    if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(clientX, clientY);
+      if (range && range.startContainer) {
+        return { node: range.startContainer, offset: range.startOffset };
+      }
+    }
+
+    return null;
+  }
+
+  function removeHighlightAtPoint(clientX, clientY) {
+    if (state.highlightRanges.length === 0) {
+      return false;
+    }
+
+    const caret = getCaretPositionFromPoint(clientX, clientY);
+    if (!caret) {
+      return false;
+    }
+
+    for (let i = state.highlightRanges.length - 1; i >= 0; i -= 1) {
+      const range = state.highlightRanges[i];
+      try {
+        if (range.isPointInRange(caret.node, caret.offset)) {
+          state.highlightRanges.splice(i, 1);
+          refreshHighlightsRendering();
+          return true;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return false;
   }
 
   function getTextFontSize() {
@@ -1239,7 +1398,10 @@
   }
 
   function clearAllStrokes() {
-    if (state.strokes.length === 0) {
+    const hasStrokes = state.strokes.length > 0;
+    const hasHighlights = state.canvasMode === 'page' && state.highlightRanges.length > 0;
+
+    if (!hasStrokes && !hasHighlights) {
       return;
     }
 
@@ -1249,7 +1411,15 @@
     state.selectedArrowId = null;
     state.selectedRectId = null;
     clearInteractionState();
-    pushHistorySnapshot();
+
+    if (hasHighlights) {
+      clearHighlights();
+    }
+
+    if (hasStrokes) {
+      pushHistorySnapshot();
+    }
+
     replayStrokes();
   }
 
@@ -1355,6 +1525,10 @@
     }
 
     const point = getCanvasPoint(event);
+
+    if (state.activeTool === 'highlight') {
+      return;
+    }
 
     if (state.activeTool === 'brush') {
       state.isPointerDown = true;
@@ -1632,6 +1806,10 @@
 
     const point = getCanvasPoint(event);
 
+    if (state.activeTool === 'highlight') {
+      return;
+    }
+
     if (state.activeTool === 'brush') {
       if (!state.isPointerDown) {
         return;
@@ -1815,6 +1993,10 @@
 
   function handlePointerUp(event) {
     if (!state.enabled || !state.canvas) {
+      return;
+    }
+
+    if (state.activeTool === 'highlight') {
       return;
     }
 
@@ -2043,6 +2225,12 @@
       return;
     }
 
+    if (key === 'h') {
+      setActiveTool('highlight');
+      event.preventDefault();
+      return;
+    }
+
     if (key === 'a') {
       setActiveTool('arrow');
       event.preventDefault();
@@ -2146,6 +2334,35 @@
     event.preventDefault();
   }
 
+  function handleHighlightPointerUp(event) {
+    if (!state.enabled || !state.isDrawingMode || state.activeTool !== 'highlight') {
+      return;
+    }
+
+    if (state.canvasMode !== 'page' || state.isTemporaryPassthrough) {
+      return;
+    }
+
+    if (event.button !== 0) {
+      return;
+    }
+
+    if (state.toolbarHost && event.composedPath().includes(state.toolbarHost)) {
+      return;
+    }
+
+    if (event.altKey) {
+      if (removeHighlightAtPoint(event.clientX, event.clientY)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    window.setTimeout(() => {
+      highlightCurrentSelection();
+    }, 0);
+  }
+
   function createCanvas() {
     const canvas = document.createElement('canvas');
     canvas.id = 'bbrush-canvas';
@@ -2218,6 +2435,7 @@
     }
 
     replayStrokes();
+    refreshHighlightsRendering();
     updateToolbarState();
   }
 
@@ -2237,6 +2455,10 @@
     state.toolbarElements.rectButton.classList.toggle('is-active', state.activeTool === 'rect');
     state.toolbarElements.arrowButton.classList.toggle('is-active', state.activeTool === 'arrow');
     state.toolbarElements.textButton.classList.toggle('is-active', state.activeTool === 'text');
+    state.toolbarElements.highlightButton.classList.toggle(
+      'is-active',
+      state.activeTool === 'highlight'
+    );
     state.toolbarElements.whiteboardButton.classList.toggle(
       'is-active',
       state.canvasMode === 'whiteboard'
@@ -2261,7 +2483,9 @@
               ? 'R'
               : state.activeTool === 'eraser'
                 ? 'E'
-                : 'P';
+                : state.activeTool === 'highlight'
+                  ? 'H'
+                  : 'P';
     state.toolbarElements.launcher.classList.toggle('is-annotating', state.isDrawingMode);
     state.toolbarElements.launcher.style.borderColor = state.brushColor;
     state.toolbarElements.launcher.style.boxShadow = state.isDrawingMode
@@ -2302,6 +2526,7 @@
     state.toolbarElements.rectButton.disabled = !state.isDrawingMode;
     state.toolbarElements.arrowButton.disabled = !state.isDrawingMode;
     state.toolbarElements.textButton.disabled = !state.isDrawingMode;
+    state.toolbarElements.highlightButton.disabled = !state.isDrawingMode;
     state.toolbarElements.undoButton.disabled = !state.isDrawingMode;
     state.toolbarElements.clearButton.disabled = !state.isDrawingMode;
     state.toolbarElements.whiteboardButton.disabled = !state.isDrawingMode;
@@ -2313,11 +2538,15 @@
       state.canvas.style.boxShadow = state.isDrawingMode
         ? 'inset 0 0 0 2px rgba(23, 98, 166, 0.9)'
         : 'none';
-      updateCanvasCursor();
+      updateOverlayInteractionState();
     }
   }
 
   function setActiveTool(tool) {
+    if (tool === 'highlight' && state.canvasMode === 'whiteboard') {
+      setCanvasMode('page', { autoEnableDrawing: false });
+    }
+
     state.activeTool = tool;
 
     if (tool === 'arrow') {
@@ -2330,7 +2559,7 @@
       state.selectedRectId = null;
     }
 
-    if (tool === 'brush' || tool === 'rect') {
+    if (tool === 'brush' || tool === 'rect' || tool === 'highlight') {
       state.selectedTextId = null;
       state.selectedArrowId = null;
       state.selectedRectId = null;
@@ -2349,6 +2578,7 @@
     }
 
     replayStrokes();
+    updateOverlayInteractionState();
     updateToolbarState();
   }
 
@@ -2430,6 +2660,13 @@
               <path d="M8 18h8" />
             </svg>
           </button>
+          <button class="bbrush-icon-button" data-role="tool-highlight" aria-label="Highlight tool" title="Highlight tool (H)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 16l5-5 4 4-5 5H6z" />
+              <path d="M13 9l2-2 3 3-2 2" />
+              <path d="M4 20h10" />
+            </svg>
+          </button>
           <button class="bbrush-icon-button" data-role="mode-whiteboard" aria-label="Whiteboard mode" title="Toggle whiteboard (W)">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="4" y="5" width="16" height="12" rx="2" />
@@ -2467,6 +2704,8 @@
             <span>A - Arrow</span>
             <span>R - Rectangle</span>
             <span>T - Text</span>
+            <span>H - Highlight text</span>
+            <span>Alt + Click (Highlight) - Remove highlight</span>
             <span>W - Toggle whiteboard</span>
             <span>Alt/Option + Drag (Text) - Duplicate text</span>
             <span>Ctrl/Cmd + Z - Undo</span>
@@ -2508,6 +2747,7 @@
     const rectButton = shadowRoot.querySelector('[data-role="tool-rect"]');
     const arrowButton = shadowRoot.querySelector('[data-role="tool-arrow"]');
     const textButton = shadowRoot.querySelector('[data-role="tool-text"]');
+    const highlightButton = shadowRoot.querySelector('[data-role="tool-highlight"]');
     const whiteboardButton = shadowRoot.querySelector('[data-role="mode-whiteboard"]');
     const toolbar = shadowRoot.querySelector('.bbrush-toolbar');
     const undoButton = shadowRoot.querySelector('[data-role="undo"]');
@@ -2632,6 +2872,10 @@
       setActiveTool('text');
     });
 
+    highlightButton.addEventListener('click', () => {
+      setActiveTool('highlight');
+    });
+
     whiteboardButton.addEventListener('click', () => {
       toggleCanvasMode();
     });
@@ -2718,6 +2962,7 @@
       rectButton,
       arrowButton,
       textButton,
+      highlightButton,
       whiteboardButton,
       toolbar,
       annotateToggleButton,
@@ -2755,6 +3000,7 @@
     state.enabled = true;
     setDrawingMode(startDrawingMode);
     updateToolbarState();
+    refreshHighlightsRendering();
     replayStrokes();
   }
 
@@ -2781,6 +3027,7 @@
     state.canvas.style.display = 'none';
     state.toolbarHost.style.display = 'none';
     state.enabled = false;
+    refreshHighlightsRendering();
   }
 
   function setDrawingMode(active) {
@@ -2809,9 +3056,7 @@
       state.isTemporaryPassthrough = false;
     }
 
-    state.canvas.style.pointerEvents = active && !state.isTemporaryPassthrough ? 'auto' : 'none';
-    document.body.style.cursor = active && !state.isTemporaryPassthrough ? 'crosshair' : '';
-    updateCanvasCursor();
+    updateOverlayInteractionState();
   }
 
   function toggleDrawingMode() {
@@ -2886,6 +3131,7 @@
 
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup', handleKeyUp);
+  document.addEventListener('pointerup', handleHighlightPointerUp, true);
   window.addEventListener('keyup', handleKeyUp);
   window.addEventListener('blur', forceReleaseTemporaryPassthrough);
   window.addEventListener('hashchange', handleLocationChange);
