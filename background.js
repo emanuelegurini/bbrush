@@ -1,3 +1,20 @@
+const CONTENT_SCRIPT_FILES = [
+  'content/icon_catalog.js',
+  'content/plugin_manifest.js',
+  'content/runtime.js',
+  'content/plugins/panel_actions.js',
+  'content/plugins/history_actions.js',
+  'content/plugins/shortcuts_help.js',
+  'content/plugins/whiteboard.js',
+  'content/plugins/brush.js',
+  'content/plugins/eraser.js',
+  'content/plugins/arrow.js',
+  'content/plugins/rect.js',
+  'content/plugins/text.js',
+  'content/plugins/highlight.js',
+  'content_script.js'
+];
+
 function sendTabMessage(tabId, message) {
   return new Promise((resolve) => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
@@ -14,7 +31,7 @@ function sendTabMessage(tabId, message) {
 async function ensureContentScript(tabId) {
   await chrome.scripting.executeScript({
     target: { tabId },
-    files: ['content_script.js']
+    files: CONTENT_SCRIPT_FILES
   });
 }
 
