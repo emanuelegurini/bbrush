@@ -986,7 +986,7 @@
         const { descriptor } = record;
         const isActive = typeof descriptor.isActive === 'function' && descriptor.isActive(ctx);
         const isDisabled =
-          typeof descriptor.isDisabled === 'function' && descriptor.isDisabled(ctx, plugin);
+          typeof descriptor.isDisabled === 'function' && descriptor.isDisabled(ctx);
 
         record.button.classList.toggle('is-active', Boolean(isActive));
         record.button.disabled = Boolean(isDisabled);
