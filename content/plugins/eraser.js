@@ -149,7 +149,7 @@
     onPointerDown(ctx, event) {
       ctx.clearSelection({
         reason: 'eraser-start',
-        exceptPluginId: 'eraser',
+        exceptPluginId: PLUGIN_IDS.ERASER,
         render: false
       });
 
