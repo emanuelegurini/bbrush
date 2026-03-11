@@ -1,10 +1,12 @@
 (function registerBbrushArrowPlugin() {
-  if (typeof window.__BBRUSH_REGISTER_PLUGIN__ !== 'function') {
-    return;
-  }
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__;
 
-  function canUseDrawingShortcut(ctx) {
-    return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
+  if (
+    !PLUGIN_IDS ||
+    typeof PLUGIN_IDS.ARROW !== 'string' ||
+    typeof window.__BBRUSH_REGISTER_PLUGIN_IMPL__ !== 'function'
+  ) {
+    return;
   }
 
   function getSelectedArrow(ctx) {
@@ -176,13 +178,7 @@
     );
   }
 
-  window.__BBRUSH_REGISTER_PLUGIN__({
-    id: 'arrow',
-    kind: 'tool',
-    order: 30,
-    entryTypes: ['arrow'],
-    launcherLabel: 'A',
-    usesCanvasPointerEvents: true,
+  window.__BBRUSH_REGISTER_PLUGIN_IMPL__(PLUGIN_IDS.ARROW, {
     setup() {
       return {
         selectedId: null,
@@ -193,44 +189,6 @@
         interactionStartEntry: null
       };
     },
-    toolbarItems: [
-      {
-        id: 'tool-arrow',
-        order: 30,
-        ariaLabel: 'Arrow tool',
-        title: 'Arrow tool (A)',
-        icon: `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 20L20 4" />
-            <path d="M11 4h9v9" />
-          </svg>
-        `,
-        onClick(ctx) {
-          ctx.setActiveTool('arrow');
-          return true;
-        },
-        isActive(ctx) {
-          return ctx.core.activeToolId === 'arrow';
-        },
-        isDisabled(ctx) {
-          return !ctx.core.isDrawingMode;
-        }
-      }
-    ],
-    shortcutItems: [{ order: 30, text: 'A - Arrow' }],
-    keybindings: [
-      {
-        key: 'a',
-        order: 30,
-        when(ctx) {
-          return canUseDrawingShortcut(ctx);
-        },
-        run(ctx) {
-          ctx.setActiveTool('arrow');
-          return true;
-        }
-      }
-    ],
     clearSelection(ctx) {
       const hadSelection = ctx.pluginState.selectedId !== null;
       const hadInteraction =
@@ -325,7 +283,7 @@
       if (clickedArrow) {
         ctx.clearSelection({
           reason: 'arrow-selected',
-          exceptPluginId: 'arrow',
+          exceptPluginId: PLUGIN_IDS.ARROW,
           render: false
         });
         ctx.pluginState.selectedId = clickedArrow.id;
@@ -346,7 +304,7 @@
 
       ctx.clearSelection({
         reason: 'arrow-draft',
-        exceptPluginId: 'arrow',
+        exceptPluginId: PLUGIN_IDS.ARROW,
         render: false
       });
       ctx.pluginState.selectedId = null;
@@ -474,7 +432,7 @@
         drawArrowEntry(ctx, ctx.pluginState.currentEntry);
       }
 
-      if (ctx.core.activeToolId !== 'arrow') {
+      if (ctx.core.activeToolId !== PLUGIN_IDS.ARROW) {
         return;
       }
 

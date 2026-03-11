@@ -1,5 +1,6 @@
 const CONTENT_SCRIPT_FILES = [
-  'content/registry.js',
+  'content/icon_catalog.js',
+  'content/plugin_manifest.js',
   'content/runtime.js',
   'content/plugins/panel_actions.js',
   'content/plugins/history_actions.js',

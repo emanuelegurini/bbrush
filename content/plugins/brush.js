@@ -1,10 +1,12 @@
 (function registerBbrushBrushPlugin() {
-  if (typeof window.__BBRUSH_REGISTER_PLUGIN__ !== 'function') {
-    return;
-  }
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__;
 
-  function canUseDrawingShortcut(ctx) {
-    return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
+  if (
+    !PLUGIN_IDS ||
+    typeof PLUGIN_IDS.BRUSH !== 'string' ||
+    typeof window.__BBRUSH_REGISTER_PLUGIN_IMPL__ !== 'function'
+  ) {
+    return;
   }
 
   function drawStrokePath(ctx, stroke) {
@@ -53,59 +55,12 @@
     ctx.core.context.stroke();
   }
 
-  window.__BBRUSH_REGISTER_PLUGIN__({
-    id: 'brush',
-    kind: 'tool',
-    order: 10,
-    entryTypes: ['brush'],
-    launcherLabel: 'P',
-    usesCanvasPointerEvents: true,
+  window.__BBRUSH_REGISTER_PLUGIN_IMPL__(PLUGIN_IDS.BRUSH, {
     setup() {
       return {
         currentStroke: null
       };
     },
-    toolbarItems: [
-      {
-        id: 'tool-brush',
-        order: 10,
-        ariaLabel: 'Pen tool',
-        title: 'Pen tool (B)',
-        icon: `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 20l4.5-1.2L19 8.3a1.9 1.9 0 0 0 0-2.7l-.6-.6a1.9 1.9 0 0 0-2.7 0L5.2 15.5z" />
-            <path d="M13.5 6.5l4 4" />
-          </svg>
-        `,
-        onClick(ctx) {
-          ctx.setActiveTool('brush');
-          return true;
-        },
-        isActive(ctx) {
-          return ctx.core.activeToolId === 'brush';
-        },
-        isDisabled(ctx) {
-          return !ctx.core.isDrawingMode;
-        }
-      }
-    ],
-    shortcutItems: [
-      { order: 10, text: 'B - Pen' },
-      { order: 11, text: 'Hold Shift + Drag (Pen) - Straight line' }
-    ],
-    keybindings: [
-      {
-        key: 'b',
-        order: 10,
-        when(ctx) {
-          return canUseDrawingShortcut(ctx);
-        },
-        run(ctx) {
-          ctx.setActiveTool('brush');
-          return true;
-        }
-      }
-    ],
     clearSelection(ctx) {
       if (!ctx.pluginState.currentStroke) {
         return false;

@@ -7,11 +7,7 @@
     return;
   }
 
-  const pluginDefinitions = Array.isArray(window.__BBRUSH_PLUGIN_DEFINITIONS__)
-    ? window.__BBRUSH_PLUGIN_DEFINITIONS__
-    : [];
-
-  const runtime = window.__BBRUSH_CREATE_RUNTIME__(pluginDefinitions);
+  const runtime = window.__BBRUSH_CREATE_RUNTIME__();
   window.__BBRUSH_RUNTIME__ = runtime;
   runtime.init();
 })();

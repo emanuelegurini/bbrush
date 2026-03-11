@@ -1,10 +1,12 @@
 (function registerBbrushRectPlugin() {
-  if (typeof window.__BBRUSH_REGISTER_PLUGIN__ !== 'function') {
-    return;
-  }
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__;
 
-  function canUseDrawingShortcut(ctx) {
-    return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
+  if (
+    !PLUGIN_IDS ||
+    typeof PLUGIN_IDS.RECT !== 'string' ||
+    typeof window.__BBRUSH_REGISTER_PLUGIN_IMPL__ !== 'function'
+  ) {
+    return;
   }
 
   function getSelectedRect(ctx) {
@@ -219,13 +221,7 @@
     selectedRect.y2 = bottom;
   }
 
-  window.__BBRUSH_REGISTER_PLUGIN__({
-    id: 'rect',
-    kind: 'tool',
-    order: 40,
-    entryTypes: ['rect'],
-    launcherLabel: 'R',
-    usesCanvasPointerEvents: true,
+  window.__BBRUSH_REGISTER_PLUGIN_IMPL__(PLUGIN_IDS.RECT, {
     setup() {
       return {
         selectedId: null,
@@ -237,43 +233,6 @@
         interactionStartEntry: null
       };
     },
-    toolbarItems: [
-      {
-        id: 'tool-rect',
-        order: 40,
-        ariaLabel: 'Rectangle tool',
-        title: 'Rectangle tool (R)',
-        icon: `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="5" y="5" width="14" height="14" rx="1" />
-          </svg>
-        `,
-        onClick(ctx) {
-          ctx.setActiveTool('rect');
-          return true;
-        },
-        isActive(ctx) {
-          return ctx.core.activeToolId === 'rect';
-        },
-        isDisabled(ctx) {
-          return !ctx.core.isDrawingMode;
-        }
-      }
-    ],
-    shortcutItems: [{ order: 40, text: 'R - Rectangle' }],
-    keybindings: [
-      {
-        key: 'r',
-        order: 40,
-        when(ctx) {
-          return canUseDrawingShortcut(ctx);
-        },
-        run(ctx) {
-          ctx.setActiveTool('rect');
-          return true;
-        }
-      }
-    ],
     clearSelection(ctx) {
       const hadSelection = ctx.pluginState.selectedId !== null;
       const hadInteraction =
@@ -365,7 +324,7 @@
       if (clickedRect) {
         ctx.clearSelection({
           reason: 'rect-selected',
-          exceptPluginId: 'rect',
+          exceptPluginId: PLUGIN_IDS.RECT,
           render: false
         });
         ctx.pluginState.selectedId = clickedRect.id;
@@ -386,7 +345,7 @@
 
       ctx.clearSelection({
         reason: 'rect-draft',
-        exceptPluginId: 'rect',
+        exceptPluginId: PLUGIN_IDS.RECT,
         render: false
       });
       ctx.pluginState.selectedId = null;
@@ -502,7 +461,7 @@
         drawRectEntry(ctx, ctx.pluginState.currentEntry);
       }
 
-      if (ctx.core.activeToolId !== 'rect') {
+      if (ctx.core.activeToolId !== PLUGIN_IDS.RECT) {
         return;
       }
 

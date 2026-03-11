@@ -1,10 +1,12 @@
 (function registerBbrushTextPlugin() {
-  if (typeof window.__BBRUSH_REGISTER_PLUGIN__ !== 'function') {
-    return;
-  }
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__;
 
-  function canUseDrawingShortcut(ctx) {
-    return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
+  if (
+    !PLUGIN_IDS ||
+    typeof PLUGIN_IDS.TEXT !== 'string' ||
+    typeof window.__BBRUSH_REGISTER_PLUGIN_IMPL__ !== 'function'
+  ) {
+    return;
   }
 
   function isUndoPressed(event) {
@@ -349,13 +351,7 @@
     selectedText.y = Math.max(0, selectedText.y);
   }
 
-  window.__BBRUSH_REGISTER_PLUGIN__({
-    id: 'text',
-    kind: 'tool',
-    order: 50,
-    entryTypes: ['text'],
-    launcherLabel: 'T',
-    usesCanvasPointerEvents: true,
+  window.__BBRUSH_REGISTER_PLUGIN_IMPL__(PLUGIN_IDS.TEXT, {
     setup() {
       return {
         selectedId: null,
@@ -368,48 +364,6 @@
         textCloneCreatedOnDrag: false
       };
     },
-    toolbarItems: [
-      {
-        id: 'tool-text',
-        order: 50,
-        ariaLabel: 'Text tool',
-        title: 'Text tool (T)',
-        icon: `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 6h14" />
-            <path d="M12 6v12" />
-            <path d="M8 18h8" />
-          </svg>
-        `,
-        onClick(ctx) {
-          ctx.setActiveTool('text');
-          return true;
-        },
-        isActive(ctx) {
-          return ctx.core.activeToolId === 'text';
-        },
-        isDisabled(ctx) {
-          return !ctx.core.isDrawingMode;
-        }
-      }
-    ],
-    shortcutItems: [
-      { order: 50, text: 'T - Text' },
-      { order: 51, text: 'Alt/Option + Drag (Text) - Duplicate text' }
-    ],
-    keybindings: [
-      {
-        key: 't',
-        order: 50,
-        when(ctx) {
-          return canUseDrawingShortcut(ctx);
-        },
-        run(ctx) {
-          ctx.setActiveTool('text');
-          return true;
-        }
-      }
-    ],
     clearSelection(ctx) {
       const hadSelection = ctx.pluginState.selectedId !== null;
       const hadInteraction =
@@ -524,7 +478,7 @@
       if (clickedText) {
         ctx.clearSelection({
           reason: 'text-selected',
-          exceptPluginId: 'text',
+          exceptPluginId: PLUGIN_IDS.TEXT,
           render: false
         });
 
@@ -556,7 +510,7 @@
 
       ctx.clearSelection({
         reason: 'text-editor',
-        exceptPluginId: 'text',
+        exceptPluginId: PLUGIN_IDS.TEXT,
         render: false
       });
       ctx.pluginState.selectedId = null;
@@ -634,7 +588,7 @@
       drawTextEntry(ctx, entry);
     },
     onRenderOverlay(ctx) {
-      if (ctx.core.activeToolId !== 'text') {
+      if (ctx.core.activeToolId !== PLUGIN_IDS.TEXT) {
         return;
       }
 

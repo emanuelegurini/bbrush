@@ -3,9 +3,34 @@
     return;
   }
 
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__ || {};
+  const ICON_KEYS = window.__BBRUSH_ICON_KEYS__ || {};
+  const getIconMarkup =
+    typeof window.__BBRUSH_GET_ICON_MARKUP__ === 'function'
+      ? window.__BBRUSH_GET_ICON_MARKUP__
+      : function getMissingBbrushIconMarkup() {
+          return '';
+        };
   const ANCHOR_SIZE = 10;
   const MIN_TEXT_SIZE = 10;
   const MAX_HISTORY_ENTRIES = 100;
+  const STATIC_PLUGIN_MANIFEST_KEYS = new Set([
+    'id',
+    'kind',
+    'order',
+    'launcherLabel',
+    'entryTypes',
+    'usesCanvasPointerEvents',
+    'toolbarItems',
+    'quickActions',
+    'shortcutItems',
+    'keybindings'
+  ]);
+  const DESCRIPTOR_HANDLER_KEYS = {
+    toolbarItems: ['onClick', 'getTitle', 'isActive', 'isDisabled'],
+    quickActions: ['onClick', 'getTitle', 'isActive', 'isDisabled'],
+    keybindings: ['when', 'run']
+  };
 
   function sortByOrder(left, right) {
     const leftOrder = typeof left.order === 'number' ? left.order : 0;
@@ -20,13 +45,13 @@
     return leftId.localeCompare(rightId);
   }
 
-  function createBbrushRuntime(pluginDefinitions) {
+  function createBbrushRuntime() {
     const state = {
       core: {
         enabled: false,
         isDrawingMode: false,
         canvasMode: 'page',
-        activeToolId: 'brush',
+        activeToolId: typeof PLUGIN_IDS.BRUSH === 'string' ? PLUGIN_IDS.BRUSH : 'brush',
         canvas: null,
         context: null,
         toolbarHost: null,
@@ -70,6 +95,32 @@
     const pluginContexts = new Map();
     let initialized = false;
     let historyPatched = false;
+
+    function logPluginError(message, details) {
+      console.error(`[bbrush] ${message}`, details);
+    }
+
+    function resolveIconMarkup(iconKey, sourceLabel) {
+      if (typeof iconKey !== 'string' || iconKey.length === 0) {
+        logPluginError(`Missing icon key for ${sourceLabel}.`, {
+          iconKey,
+          sourceLabel
+        });
+        return '';
+      }
+
+      const iconMarkup = getIconMarkup(iconKey);
+
+      if (!iconMarkup) {
+        logPluginError(`Missing icon markup for key "${iconKey}" on ${sourceLabel}.`, {
+          iconKey,
+          sourceLabel
+        });
+        return '';
+      }
+
+      return iconMarkup;
+    }
 
     function getPlugin(pluginId) {
       return pluginsById.get(pluginId) || null;
@@ -382,6 +433,240 @@
       return plugin[hookName](getPluginContext(plugin.id), payload);
     }
 
+    function adjustActiveSize(delta) {
+      if (!Number.isFinite(delta) || delta === 0) {
+        return false;
+      }
+
+      if (state.core.activeToolId === PLUGIN_IDS.TEXT) {
+        state.shared.textSize = Math.max(12, Math.min(96, state.shared.textSize + delta));
+      } else {
+        state.shared.penSize = Math.max(1, Math.min(24, state.shared.penSize + delta));
+      }
+
+      updateToolbarState();
+      return true;
+    }
+
+    const builtInHandlers = {
+      activateTool(ctx, _payload, reference) {
+        ctx.setActiveTool(reference.descriptor.targetToolId || reference.pluginId);
+        return true;
+      },
+      adjustActiveSize(_ctx, _payload, reference) {
+        return adjustActiveSize(Number(reference.descriptor.sizeDelta));
+      },
+      canUseDrawingShortcut(ctx) {
+        return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
+      },
+      clearAll(ctx, _payload, reference) {
+        ctx.clearAll();
+
+        if (reference.descriptor.closeQuickMenu) {
+          ctx.setQuickMenuVisible(false);
+        }
+
+        return true;
+      },
+      clearSelection(ctx, _payload, reference) {
+        return ctx.clearSelection({
+          reason: reference.descriptor.reason || reference.descriptor.id || 'clear-selection'
+        });
+      },
+      isActiveTool(ctx, _payload, reference) {
+        return ctx.core.activeToolId === (reference.descriptor.targetToolId || reference.pluginId);
+      },
+      isDrawingDisabled(ctx) {
+        return !ctx.core.isDrawingMode;
+      },
+      isEnabled(ctx) {
+        return ctx.core.enabled;
+      },
+      isWhiteboardMode(ctx) {
+        return ctx.core.canvasMode === 'whiteboard';
+      },
+      openPanel(ctx) {
+        ctx.setQuickMenuVisible(false);
+        ctx.setToolbarExpanded(true);
+        return true;
+      },
+      toggleCanvasMode(ctx) {
+        ctx.toggleCanvasMode();
+        return true;
+      },
+      toggleShortcuts(ctx) {
+        ctx.toggleShortcuts();
+        return true;
+      },
+      undoHistory(ctx, _payload, reference) {
+        const changed = ctx.history.undo();
+
+        if (reference.descriptor.closeQuickMenu) {
+          ctx.setQuickMenuVisible(false);
+        }
+
+        return changed;
+      }
+    };
+
+    function resolveHandlerReference(pluginId, descriptorType, descriptor, propertyName, handlers) {
+      const reference = descriptor[propertyName];
+      if (reference === undefined || reference === null) {
+        return {
+          ok: true,
+          value: reference
+        };
+      }
+
+      if (typeof reference === 'function') {
+        return {
+          ok: true,
+          value: reference
+        };
+      }
+
+      if (typeof reference !== 'string') {
+        logPluginError(
+          `Invalid ${descriptorType}.${propertyName} reference for plugin "${pluginId}".`,
+          descriptor
+        );
+        return {
+          ok: false,
+          value: null
+        };
+      }
+
+      const pluginHandler =
+        handlers && typeof handlers[reference] === 'function' ? handlers[reference] : null;
+      const builtInHandler =
+        !pluginHandler && typeof builtInHandlers[reference] === 'function'
+          ? builtInHandlers[reference]
+          : null;
+      const resolvedHandler = pluginHandler || builtInHandler;
+
+      if (!resolvedHandler) {
+        logPluginError(
+          `Missing handler "${reference}" for ${descriptorType} on plugin "${pluginId}".`,
+          descriptor
+        );
+        return {
+          ok: false,
+          value: null
+        };
+      }
+
+      return {
+        ok: true,
+        value(ctx, payload) {
+          return resolvedHandler(ctx, payload, {
+            pluginId,
+            descriptorType,
+            propertyName,
+            descriptor
+          });
+        }
+      };
+    }
+
+    function resolveDescriptorList(pluginId, descriptorType, descriptors, handlers) {
+      const handlerKeys = DESCRIPTOR_HANDLER_KEYS[descriptorType] || [];
+      const resolvedDescriptors = [];
+
+      for (const descriptor of descriptors) {
+        if (!descriptor || typeof descriptor !== 'object') {
+          logPluginError(
+            `Invalid ${descriptorType} descriptor for plugin "${pluginId}".`,
+            descriptor
+          );
+          continue;
+        }
+
+        const resolvedDescriptor = { ...descriptor };
+        let isValid = true;
+
+        for (const handlerKey of handlerKeys) {
+          if (resolvedDescriptor[handlerKey] === undefined) {
+            continue;
+          }
+
+          const resolution = resolveHandlerReference(
+            pluginId,
+            descriptorType,
+            descriptor,
+            handlerKey,
+            handlers
+          );
+
+          if (!resolution.ok) {
+            isValid = false;
+            break;
+          }
+
+          resolvedDescriptor[handlerKey] = resolution.value;
+        }
+
+        if (!isValid) {
+          continue;
+        }
+
+        resolvedDescriptors.push(resolvedDescriptor);
+      }
+
+      return resolvedDescriptors;
+    }
+
+    function composePluginDefinition(manifestEntry, implementation) {
+      if (!manifestEntry || typeof manifestEntry.id !== 'string') {
+        return null;
+      }
+
+      const pluginId = manifestEntry.id;
+      const handlers =
+        implementation && implementation.handlers && typeof implementation.handlers === 'object'
+          ? implementation.handlers
+          : {};
+      const pluginDefinition = {
+        ...manifestEntry,
+        toolbarItems: resolveDescriptorList(
+          pluginId,
+          'toolbarItems',
+          Array.isArray(manifestEntry.toolbarItems) ? manifestEntry.toolbarItems : [],
+          handlers
+        ),
+        quickActions: resolveDescriptorList(
+          pluginId,
+          'quickActions',
+          Array.isArray(manifestEntry.quickActions) ? manifestEntry.quickActions : [],
+          handlers
+        ),
+        keybindings: resolveDescriptorList(
+          pluginId,
+          'keybindings',
+          Array.isArray(manifestEntry.keybindings) ? manifestEntry.keybindings : [],
+          handlers
+        ),
+        shortcutItems: Array.isArray(manifestEntry.shortcutItems) ? manifestEntry.shortcutItems : []
+      };
+
+      for (const [key, value] of Object.entries(implementation || {})) {
+        if (key === 'handlers') {
+          continue;
+        }
+
+        if (STATIC_PLUGIN_MANIFEST_KEYS.has(key)) {
+          logPluginError(
+            `Plugin "${pluginId}" attempted to redefine static manifest key "${key}".`,
+            value
+          );
+          continue;
+        }
+
+        pluginDefinition[key] = value;
+      }
+
+      return pluginDefinition;
+    }
+
     function collectPluginDescriptors() {
       state.core.toolbarButtonRecords = [];
       state.core.quickActionRecords = [];
@@ -461,15 +746,54 @@
     }
 
     function initializePlugins() {
-      const normalizedDefinitions = Array.isArray(pluginDefinitions) ? [...pluginDefinitions] : [];
+      const manifestEntries = window.__BBRUSH_PLUGIN_MANIFEST__;
+      const implementationEntries = window.__BBRUSH_PLUGIN_IMPLEMENTATIONS__;
+      const normalizedDefinitions =
+        manifestEntries && typeof manifestEntries === 'object'
+          ? Object.values(manifestEntries)
+          : [];
+      const implementations =
+        implementationEntries && typeof implementationEntries === 'object'
+          ? implementationEntries
+          : {};
+
       normalizedDefinitions.sort(sortByOrder);
 
       plugins.length = 0;
       pluginsById.clear();
       pluginContexts.clear();
 
-      for (const definition of normalizedDefinitions) {
-        if (!definition || typeof definition.id !== 'string') {
+      for (const implementationId of Object.keys(implementations)) {
+        if (manifestEntries && manifestEntries[implementationId]) {
+          continue;
+        }
+
+        logPluginError(
+          `Skipping plugin implementation "${implementationId}" because no manifest entry exists.`,
+          implementations[implementationId]
+        );
+      }
+
+      for (const manifestEntry of normalizedDefinitions) {
+        if (!manifestEntry || typeof manifestEntry.id !== 'string') {
+          continue;
+        }
+
+        const implementation = implementations[manifestEntry.id];
+        if (!implementation || typeof implementation !== 'object') {
+          logPluginError(
+            `Skipping plugin "${manifestEntry.id}" because no implementation was registered.`,
+            manifestEntry
+          );
+          continue;
+        }
+
+        const definition = composePluginDefinition(manifestEntry, implementation);
+        if (!definition) {
+          logPluginError(`Skipping plugin "${manifestEntry.id}" because composition failed.`, {
+            manifestEntry,
+            implementation
+          });
           continue;
         }
 
@@ -535,7 +859,7 @@
     }
 
     function getActiveSizeConfig() {
-      if (state.core.activeToolId === 'text') {
+      if (state.core.activeToolId === PLUGIN_IDS.TEXT) {
         return {
           label: 'Text size',
           min: 12,
@@ -544,7 +868,7 @@
         };
       }
 
-      if (state.core.activeToolId === 'eraser') {
+      if (state.core.activeToolId === PLUGIN_IDS.ERASER) {
         return {
           label: 'Eraser size',
           min: 1,
@@ -618,7 +942,7 @@
         return;
       }
 
-      if (state.core.activeToolId === 'highlight') {
+      if (state.core.activeToolId === PLUGIN_IDS.HIGHLIGHT) {
         document.body.style.cursor = 'text';
         return;
       }
@@ -924,10 +1248,14 @@
 
     function buildIconButton(descriptor) {
       const button = document.createElement('button');
+      button.type = 'button';
       button.className = 'bbrush-icon-button';
       button.setAttribute('aria-label', descriptor.ariaLabel || '');
       button.title = descriptor.title || '';
-      button.innerHTML = descriptor.icon || '';
+      button.innerHTML = resolveIconMarkup(
+        descriptor.iconKey,
+        `toolbar item "${descriptor.id || 'unknown'}"`
+      );
       return button;
     }
 
@@ -1030,24 +1358,12 @@
         <div class="bbrush-panel" data-role="panel" hidden>
           <div class="bbrush-toolbar">
             <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
-            <button class="bbrush-icon-button" data-role="annotate-toggle" aria-label="Toggle annotation" title="Enable annotation">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3v8" />
-                <path d="M7.8 5.7A8.5 8.5 0 1 0 16.2 5.7" />
-              </svg>
-            </button>
+            <button class="bbrush-icon-button" data-role="annotate-toggle" aria-label="Toggle annotation" title="Enable annotation"></button>
             <label class="bbrush-toolbar-field">
               <span class="bbrush-visually-hidden">Color</span>
               <input data-role="color" type="color" value="#ff00bb" />
             </label>
-            <button class="bbrush-icon-button" data-role="size-toggle" aria-label="Toggle size" title="Show size">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 8h10" />
-                <circle cx="16" cy="8" r="2" />
-                <path d="M4 16h6" />
-                <circle cx="12" cy="16" r="2" />
-              </svg>
-            </button>
+            <button class="bbrush-icon-button" data-role="size-toggle" aria-label="Toggle size" title="Show size"></button>
             <label class="bbrush-toolbar-field bbrush-toolbar-size" data-role="size-field">
               <span data-role="size-label">Pen size</span>
               <input data-role="size" type="range" min="1" max="24" value="4" />
@@ -1083,6 +1399,15 @@
       const sizeInput = shadowRoot.querySelector('[data-role="size"]');
       const toolbar = shadowRoot.querySelector('.bbrush-toolbar');
       const shortcutsPanel = shadowRoot.querySelector('[data-role="shortcuts-panel"]');
+
+      annotateToggleButton.innerHTML = resolveIconMarkup(
+        ICON_KEYS.SHELL_ANNOTATE_TOGGLE || 'shell-annotate-toggle',
+        'toolbar shell button "annotate-toggle"'
+      );
+      sizeToggle.innerHTML = resolveIconMarkup(
+        ICON_KEYS.SHELL_SIZE_TOGGLE || 'shell-size-toggle',
+        'toolbar shell button "size-toggle"'
+      );
 
       launcher.addEventListener('click', () => {
         if (state.core.suppressNextLauncherClick) {
@@ -1189,7 +1514,7 @@
       });
 
       sizeInput.addEventListener('input', () => {
-        if (state.core.activeToolId === 'text') {
+        if (state.core.activeToolId === PLUGIN_IDS.TEXT) {
           state.shared.textSize = Number(sizeInput.value);
         } else {
           state.shared.penSize = Number(sizeInput.value);

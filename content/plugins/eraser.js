@@ -1,13 +1,15 @@
 (function registerBbrushEraserPlugin() {
-  if (typeof window.__BBRUSH_REGISTER_PLUGIN__ !== 'function') {
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__;
+
+  if (
+    !PLUGIN_IDS ||
+    typeof PLUGIN_IDS.ERASER !== 'string' ||
+    typeof window.__BBRUSH_REGISTER_PLUGIN_IMPL__ !== 'function'
+  ) {
     return;
   }
 
   const cursorCache = new Map();
-
-  function canUseDrawingShortcut(ctx) {
-    return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
-  }
 
   function getEraserCursor(size) {
     const diameter = Math.max(12, Math.min(48, Math.round(size * 2 + 4)));
@@ -121,56 +123,13 @@
     return false;
   }
 
-  window.__BBRUSH_REGISTER_PLUGIN__({
-    id: 'eraser',
-    kind: 'tool',
-    order: 20,
-    launcherLabel: 'E',
-    usesCanvasPointerEvents: true,
+  window.__BBRUSH_REGISTER_PLUGIN_IMPL__(PLUGIN_IDS.ERASER, {
     setup() {
       return {
         isPointerDown: false,
         didMutate: false
       };
     },
-    toolbarItems: [
-      {
-        id: 'tool-eraser',
-        order: 20,
-        ariaLabel: 'Eraser tool',
-        title: 'Eraser tool (E)',
-        icon: `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 16l6-8 6 6-6 8H7z" />
-            <path d="M4 20h16" />
-          </svg>
-        `,
-        onClick(ctx) {
-          ctx.setActiveTool('eraser');
-          return true;
-        },
-        isActive(ctx) {
-          return ctx.core.activeToolId === 'eraser';
-        },
-        isDisabled(ctx) {
-          return !ctx.core.isDrawingMode;
-        }
-      }
-    ],
-    shortcutItems: [{ order: 20, text: 'E - Eraser' }],
-    keybindings: [
-      {
-        key: 'e',
-        order: 20,
-        when(ctx) {
-          return canUseDrawingShortcut(ctx);
-        },
-        run(ctx) {
-          ctx.setActiveTool('eraser');
-          return true;
-        }
-      }
-    ],
     clearSelection(ctx) {
       const changed = ctx.pluginState.isPointerDown || ctx.pluginState.didMutate;
       ctx.pluginState.isPointerDown = false;

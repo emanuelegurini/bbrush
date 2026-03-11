@@ -1,14 +1,16 @@
 (function registerBbrushHighlightPlugin() {
-  if (typeof window.__BBRUSH_REGISTER_PLUGIN__ !== 'function') {
+  const PLUGIN_IDS = window.__BBRUSH_PLUGIN_IDS__;
+
+  if (
+    !PLUGIN_IDS ||
+    typeof PLUGIN_IDS.HIGHLIGHT !== 'string' ||
+    typeof window.__BBRUSH_REGISTER_PLUGIN_IMPL__ !== 'function'
+  ) {
     return;
   }
 
   const HIGHLIGHT_REGISTRY_KEY = 'bbrush-highlight';
   const HIGHLIGHT_STYLE_ID = 'bbrush-highlight-style';
-
-  function canUseDrawingShortcut(ctx) {
-    return ctx.core.enabled && ctx.core.isDrawingMode && !ctx.core.isTemporaryPassthrough;
-  }
 
   function canUseCssHighlights() {
     return (
@@ -152,59 +154,12 @@
     return false;
   }
 
-  window.__BBRUSH_REGISTER_PLUGIN__({
-    id: 'highlight',
-    kind: 'tool',
-    order: 60,
-    launcherLabel: 'H',
-    usesCanvasPointerEvents: false,
+  window.__BBRUSH_REGISTER_PLUGIN_IMPL__(PLUGIN_IDS.HIGHLIGHT, {
     setup() {
       return {
         ranges: []
       };
     },
-    toolbarItems: [
-      {
-        id: 'tool-highlight',
-        order: 60,
-        ariaLabel: 'Highlight tool',
-        title: 'Highlight tool (H)',
-        icon: `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 16l5-5 4 4-5 5H6z" />
-            <path d="M13 9l2-2 3 3-2 2" />
-            <path d="M4 20h10" />
-          </svg>
-        `,
-        onClick(ctx) {
-          ctx.setActiveTool('highlight');
-          return true;
-        },
-        isActive(ctx) {
-          return ctx.core.activeToolId === 'highlight';
-        },
-        isDisabled(ctx) {
-          return !ctx.core.isDrawingMode;
-        }
-      }
-    ],
-    shortcutItems: [
-      { order: 60, text: 'H - Highlight text' },
-      { order: 61, text: 'Alt + Click (Highlight) - Remove highlight' }
-    ],
-    keybindings: [
-      {
-        key: 'h',
-        order: 60,
-        when(ctx) {
-          return canUseDrawingShortcut(ctx);
-        },
-        run(ctx) {
-          ctx.setActiveTool('highlight');
-          return true;
-        }
-      }
-    ],
     onToolActivate(ctx) {
       if (ctx.core.canvasMode === 'whiteboard') {
         ctx.setCanvasMode('page', { autoEnableDrawing: false });
@@ -227,7 +182,11 @@
       return clearHighlights(ctx);
     },
     onDocumentPointerUpCapture(ctx, event) {
-      if (!ctx.core.enabled || !ctx.core.isDrawingMode || ctx.core.activeToolId !== 'highlight') {
+      if (
+        !ctx.core.enabled ||
+        !ctx.core.isDrawingMode ||
+        ctx.core.activeToolId !== PLUGIN_IDS.HIGHLIGHT
+      ) {
         return;
       }
 
