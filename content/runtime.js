@@ -1863,7 +1863,6 @@
           callPluginHook(plugin, 'onVisibilityChange', document.visibilityState);
         }
       });
-      window.addEventListener('keyup', handleKeyUp);
       window.addEventListener('blur', () => {
         forceReleaseTemporaryPassthrough();
         for (const plugin of plugins) {
