@@ -23,9 +23,10 @@
 1. Clone this repository.
 2. Open Chrome and go to `chrome://extensions`.
 3. Enable **Developer mode**.
-4. Run `npm install`.
-5. Run `npm run build`.
-6. Click **Load unpacked** and select the `dist/` folder.
+4. Use Node `^20.19.0 || >=22.12.0`.
+5. Run `npm install`.
+6. Run `npm run build`.
+7. Click **Load unpacked** and select the `dist/` folder.
 
 ## Usage
 
@@ -57,6 +58,7 @@
 
 This project uses Vite for bundling and still has no automated test runner.
 
+- Required Node version: `^20.19.0 || >=22.12.0`
 - Install dependencies: `npm install`
 - Build the extension: `npm run build`
 - Rebuild in watch mode: `npm run dev`

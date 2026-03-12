@@ -10,6 +10,7 @@ This project is a Vite-built Chrome extension codebase (Manifest V3, no automate
 - Runtime outputs: service worker (`dist/background.js`), content script (`dist/content-script.js`), popup (`dist/popup.js`)
 - Package manager: npm
 - Module mode: `"type": "commonjs"`
+- Supported Node: `^20.19.0 || >=22.12.0`
 
 ## Source Layout
 
