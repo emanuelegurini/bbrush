@@ -1,42 +1,289 @@
 @import url('./design-tokens.css');
 
-:root {
-  color: var(--bb-ink);
-  font-family: var(--bb-font-body);
-}
-
 * {
   box-sizing: border-box;
 }
 
 body {
-  background: var(--bb-paper);
+  background:
+    radial-gradient(circle at top left, rgba(191, 231, 125, 0.46), transparent 28%),
+    radial-gradient(circle at top right, rgba(199, 182, 255, 0.52), transparent 34%),
+    linear-gradient(180deg, #f7f3ec 0%, #fffdf8 100%);
   color: var(--bb-ink);
   font-family: var(--bb-font-body);
   margin: 0;
-  min-width: 220px;
-  padding: 12px;
+  min-width: 348px;
 }
 
-h1 {
-  font-size: 14px;
-  margin: 0 0 8px;
+.popup-app {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
 }
 
-p {
+.popup-header {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto 1fr;
+}
+
+.popup-badge {
+  align-items: center;
+  background: linear-gradient(145deg, var(--bb-forest), #3f8f64);
+  border-radius: 18px;
+  box-shadow: var(--bb-card-shadow-soft);
+  color: white;
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 700;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
+.popup-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.popup-kicker {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.popup-date,
+.popup-shell p {
   color: var(--bb-ink-soft);
-  font-size: 12px;
-  margin: 0 0 12px;
+  margin: 0;
 }
 
-button {
-  background: var(--bb-forest);
+.popup-date {
+  font-size: 12px;
+}
+
+.popup-hero {
+  background: linear-gradient(145deg, rgba(201, 189, 255, 0.96), rgba(236, 231, 255, 0.92));
+  border: 1px solid rgba(90, 76, 157, 0.08);
+  border-radius: 28px;
+  box-shadow: var(--bb-card-shadow);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 108px;
+  overflow: hidden;
+  padding: 18px;
+  position: relative;
+}
+
+.popup-hero::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.popup-hero-copy {
+  display: grid;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.popup-pill,
+.popup-support-pill {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  width: fit-content;
+}
+
+.popup-pill {
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--bb-ink);
+}
+
+.popup-hero h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+  margin: 0;
+  max-width: 7ch;
+}
+
+.popup-hero p {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 24ch;
+}
+
+.popup-hero-art {
+  align-items: end;
+  display: flex;
+  justify-content: center;
+  min-height: 138px;
+  position: relative;
+}
+
+.popup-orb {
+  border-radius: 28px;
+  box-shadow: 0 18px 28px rgba(32, 52, 39, 0.14);
+  position: absolute;
+}
+
+.popup-orb-lavender {
+  background: linear-gradient(180deg, #9581ea, #cdbfff);
+  height: 84px;
+  right: 12px;
+  top: 8px;
+  transform: rotate(-12deg);
+  width: 54px;
+}
+
+.popup-orb-sage {
+  background: linear-gradient(180deg, #9ad7af, #d8f1dd);
+  bottom: 12px;
+  height: 66px;
+  left: 10px;
+  transform: rotate(14deg);
+  width: 58px;
+}
+
+.popup-orb-apricot {
+  background: linear-gradient(180deg, #efb37c, #ffd8b1);
+  bottom: -2px;
+  height: 56px;
+  right: 24px;
+  width: 56px;
+}
+
+.popup-card-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.popup-mini-card {
+  border: 1px solid var(--bb-outline);
+  border-radius: 22px;
+  box-shadow: var(--bb-card-shadow-soft);
+  display: grid;
+  gap: 6px;
+  min-height: 106px;
+  padding: 14px 12px;
+}
+
+.popup-mini-card strong {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.popup-mini-card small {
+  color: rgba(20, 57, 46, 0.72);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.popup-mini-label {
+  color: rgba(20, 57, 46, 0.7);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.popup-mini-card-sage {
+  background: rgba(184, 220, 192, 0.88);
+}
+
+.popup-mini-card-lavender {
+  background: rgba(199, 182, 255, 0.68);
+}
+
+.popup-mini-card-apricot {
+  background: rgba(244, 188, 122, 0.7);
+}
+
+.popup-primary {
+  background: linear-gradient(135deg, var(--bb-forest), #215d3f);
   border: none;
-  border-radius: 6px;
-  color: #fff;
+  border-radius: 20px;
+  box-shadow: 0 14px 26px rgba(39, 99, 67, 0.24);
+  color: white;
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
-  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  min-height: 52px;
+  padding: 0 18px;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    filter 140ms ease;
   width: 100%;
+}
+
+.popup-primary:hover {
+  box-shadow: 0 18px 30px rgba(39, 99, 67, 0.28);
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+}
+
+.popup-primary:active {
+  transform: translateY(0);
+}
+
+.popup-support {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--bb-outline);
+  border-radius: 24px;
+  box-shadow: var(--bb-card-shadow-soft);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.popup-support-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.popup-support-pill {
+  background: rgba(191, 231, 125, 0.5);
+  color: var(--bb-ink);
+}
+
+.popup-support-pill-muted {
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--bb-ink-soft);
+}
+
+.popup-support p {
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.popup-shell[data-state='active'] .popup-hero {
+  background: linear-gradient(145deg, rgba(184, 220, 192, 0.96), rgba(227, 244, 230, 0.92));
+}
+
+.popup-shell[data-state='unsupported'] .popup-hero {
+  background: linear-gradient(145deg, rgba(242, 190, 189, 0.94), rgba(255, 231, 231, 0.95));
+}
+
+.popup-shell[data-state='error'] .popup-hero {
+  background: linear-gradient(145deg, rgba(244, 188, 122, 0.92), rgba(255, 241, 222, 0.95));
 }
