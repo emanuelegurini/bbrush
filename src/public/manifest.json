@@ -39,7 +39,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["toolbar.css"],
+      "resources": ["toolbar.css", "design-tokens.css", "fonts/*"],
       "matches": ["<all_urls>"]
     }
   ]

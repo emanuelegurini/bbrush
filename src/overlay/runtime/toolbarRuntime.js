@@ -178,9 +178,25 @@ export function createToolbarRuntime({
   }
 
   function populateToolbarUi(shadowRoot) {
-    const dynamicButtonsRoot = shadowRoot.querySelector('[data-role="dynamic-buttons"]');
+    const actionRow = shadowRoot.querySelector('[data-role="action-row"]');
+    const modeActions = shadowRoot.querySelector('[data-role="mode-actions"]');
     const quickMenu = shadowRoot.querySelector('[data-role="quick-menu"]');
     const shortcutsPanel = shadowRoot.querySelector('[data-role="shortcuts-panel"]');
+    const shortcutsList =
+      shadowRoot.querySelector('[data-role="shortcuts-list"]') || shortcutsPanel;
+    const toolGrid = shadowRoot.querySelector('[data-role="tool-grid"]');
+
+    function getToolbarTarget(descriptor) {
+      if (descriptor.id === 'mode-whiteboard') {
+        return modeActions;
+      }
+
+      if (typeof descriptor.id === 'string' && descriptor.id.startsWith('tool-')) {
+        return toolGrid;
+      }
+
+      return actionRow;
+    }
 
     for (const record of state.core.toolbarButtonRecords) {
       const button = buildIconButton(record.descriptor);
@@ -192,7 +208,7 @@ export function createToolbarRuntime({
 
         record.descriptor.onClick(ctx, event);
       });
-      dynamicButtonsRoot.appendChild(button);
+      getToolbarTarget(record.descriptor).appendChild(button);
       record.button = button;
     }
 
@@ -213,7 +229,7 @@ export function createToolbarRuntime({
     for (const shortcutLine of state.core.shortcutLines) {
       const line = document.createElement('span');
       line.textContent = shortcutLine.text;
-      shortcutsPanel.appendChild(line);
+      shortcutsList.appendChild(line);
     }
   }
 
@@ -235,27 +251,42 @@ export function createToolbarRuntime({
     shadowRoot.innerHTML = `
         <div class="bbrush-launcher-wrap">
           <button class="bbrush-launcher" data-role="launcher" title="Open bbrush panel">
-            <span class="bbrush-launcher-label">BB</span>
+            <span class="bbrush-launcher-label" aria-hidden="true">
+              <svg viewBox="0 0 72 72" focusable="false">
+                <path d="M14 18c6 5 10 12 13 25 1 5 3 8 6 8 3 0 5-3 5-7V18" />
+                <path d="M38 18c0-9 6-14 14-14 7 0 12 5 12 11 0 8-7 12-14 16-5 3-10 6-10 11" />
+                <path d="M41 39c10 1 21 5 21 15 0 8-8 13-19 13-10 0-17-3-17-9 0-8 10-11 29-11 7 0 13 2 18 6" />
+              </svg>
+            </span>
             <span class="bbrush-launcher-tool" data-role="launcher-tool">P</span>
           </button>
           <div class="bbrush-quick-menu" data-role="quick-menu" hidden></div>
         </div>
         <div class="bbrush-panel" data-role="panel" hidden>
           <div class="bbrush-toolbar">
-            <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
-            <button class="bbrush-icon-button" data-role="annotate-toggle" aria-label="Toggle annotation" title="Enable annotation"></button>
-            <label class="bbrush-toolbar-field">
-              <span class="bbrush-visually-hidden">Color</span>
-              <input data-role="color" type="color" value="#ff00bb" />
-            </label>
-            <button class="bbrush-icon-button" data-role="size-toggle" aria-label="Toggle size" title="Show size"></button>
-            <label class="bbrush-toolbar-field bbrush-toolbar-size" data-role="size-field">
-              <span data-role="size-label">Pen size</span>
-              <input data-role="size" type="range" min="1" max="24" value="4" />
-            </label>
-            <div data-role="dynamic-buttons" style="display: contents;"></div>
+            <div class="bbrush-toolbar-bar" data-role="toolbar-bar">
+              <div class="bbrush-toolbar-group bbrush-tool-grid" data-role="tool-grid"></div>
+              <div class="bbrush-toolbar-group bbrush-mode-actions" data-role="mode-actions">
+                <button class="bbrush-icon-button" data-role="annotate-toggle" aria-label="Toggle annotation" title="Enable annotation"></button>
+              </div>
+              <div class="bbrush-toolbar-group bbrush-toolbar-style">
+                <label class="bbrush-toolbar-field bbrush-toolbar-color-field">
+                  <span class="bbrush-visually-hidden">Color</span>
+                  <input data-role="color" type="color" value="#ff00bb" />
+                </label>
+                <div class="bbrush-toolbar-size-shell">
+                  <button class="bbrush-icon-button" data-role="size-toggle" aria-label="Toggle size" title="Show size"></button>
+                  <label class="bbrush-toolbar-field bbrush-toolbar-size" data-role="size-field">
+                    <span data-role="size-label">Pen size</span>
+                    <input data-role="size" type="range" min="1" max="24" value="4" />
+                  </label>
+                </div>
+              </div>
+              <div class="bbrush-toolbar-group bbrush-action-row" data-role="action-row"></div>
+            </div>
             <div class="bbrush-shortcuts" data-role="shortcuts-panel">
               <strong>Shortcuts</strong>
+              <div class="bbrush-shortcuts-list" data-role="shortcuts-list"></div>
             </div>
           </div>
         </div>
@@ -275,7 +306,7 @@ export function createToolbarRuntime({
     const launcherTool = shadowRoot.querySelector('[data-role="launcher-tool"]');
     const quickMenu = shadowRoot.querySelector('[data-role="quick-menu"]');
     const panel = shadowRoot.querySelector('[data-role="panel"]');
-    const dragHandle = shadowRoot.querySelector('[data-role="drag"]');
+    const toolbarBar = shadowRoot.querySelector('[data-role="toolbar-bar"]');
     const annotateToggleButton = shadowRoot.querySelector('[data-role="annotate-toggle"]');
     const colorInput = shadowRoot.querySelector('[data-role="color"]');
     const sizeToggle = shadowRoot.querySelector('[data-role="size-toggle"]');
@@ -360,14 +391,18 @@ export function createToolbarRuntime({
       setQuickMenuVisible(!state.core.showQuickMenu);
     });
 
-    dragHandle.addEventListener('pointerdown', (event) => {
+    toolbarBar.addEventListener('pointerdown', (event) => {
+      if (event.target.closest('button, input, label')) {
+        return;
+      }
+
       state.core.isDraggingToolbar = true;
       state.core.dragOffsetX = event.clientX - state.core.toolbarHost.offsetLeft;
       state.core.dragOffsetY = event.clientY - state.core.toolbarHost.offsetTop;
-      dragHandle.setPointerCapture(event.pointerId);
+      toolbarBar.setPointerCapture(event.pointerId);
     });
 
-    dragHandle.addEventListener('pointermove', (event) => {
+    toolbarBar.addEventListener('pointermove', (event) => {
       if (!state.core.isDraggingToolbar) {
         return;
       }
@@ -379,10 +414,10 @@ export function createToolbarRuntime({
       state.core.toolbarHost.style.top = `${Math.max(0, top)}px`;
     });
 
-    dragHandle.addEventListener('pointerup', (event) => {
+    toolbarBar.addEventListener('pointerup', (event) => {
       state.core.isDraggingToolbar = false;
-      if (dragHandle.hasPointerCapture(event.pointerId)) {
-        dragHandle.releasePointerCapture(event.pointerId);
+      if (toolbarBar.hasPointerCapture(event.pointerId)) {
+        toolbarBar.releasePointerCapture(event.pointerId);
       }
     });
 
