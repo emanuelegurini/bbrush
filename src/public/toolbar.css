@@ -1,16 +1,20 @@
+@import url('./design-tokens.css');
+
 :host {
-  --bb-accent: #ff00bb;
-  --bb-surface: rgba(11, 18, 27, 0.94);
-  --bb-surface-strong: rgba(7, 12, 19, 0.97);
-  --bb-border: rgba(179, 194, 211, 0.28);
-  --bb-text: #f8fafc;
-  --bb-text-muted: #c6d2df;
-  --bb-btn: rgba(146, 164, 185, 0.16);
-  --bb-btn-hover: rgba(146, 164, 185, 0.26);
-  --bb-btn-active: color-mix(in srgb, var(--bb-accent) 28%, #101826);
-  --bb-disabled: rgba(129, 146, 165, 0.26);
-  --bb-shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.28);
-  --bb-shadow-strong: 0 14px 34px rgba(0, 0, 0, 0.36);
+  --bb-accent: var(--bb-lavender);
+  --bb-surface: var(--bb-toolbar-surface);
+  --bb-surface-strong: var(--bb-toolbar-card-strong);
+  --bb-border: var(--bb-toolbar-border);
+  --bb-text: var(--bb-toolbar-text);
+  --bb-text-muted: var(--bb-toolbar-muted);
+  --bb-btn: var(--bb-toolbar-button);
+  --bb-btn-hover: var(--bb-toolbar-button-hover);
+  --bb-btn-active: var(--bb-toolbar-button-active);
+  --bb-disabled: var(--bb-toolbar-disabled);
+  --bb-shadow-soft: var(--bb-card-shadow-soft);
+  --bb-shadow-strong: var(--bb-card-shadow);
+  color: var(--bb-text);
+  font-family: var(--bb-font-body);
 }
 
 .bbrush-launcher-wrap {
