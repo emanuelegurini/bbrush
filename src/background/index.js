@@ -1,19 +1,6 @@
-const CONTENT_SCRIPT_FILES = [
-  'content/icon_catalog.js',
-  'content/plugin_manifest.js',
-  'content/runtime.js',
-  'content/plugins/panel_actions.js',
-  'content/plugins/history_actions.js',
-  'content/plugins/shortcuts_help.js',
-  'content/plugins/whiteboard.js',
-  'content/plugins/brush.js',
-  'content/plugins/eraser.js',
-  'content/plugins/arrow.js',
-  'content/plugins/rect.js',
-  'content/plugins/text.js',
-  'content/plugins/highlight.js',
-  'content_script.js'
-];
+import { MESSAGE_TYPES } from '../shared/messages.js';
+
+const CONTENT_SCRIPT_FILES = ['content-script.js'];
 
 function sendTabMessage(tabId, message) {
   return new Promise((resolve) => {
@@ -36,7 +23,7 @@ async function ensureContentScript(tabId) {
 }
 
 async function getOverlayStatus(tabId) {
-  const response = await sendTabMessage(tabId, { type: 'BBRUSH_GET_STATUS' });
+  const response = await sendTabMessage(tabId, { type: MESSAGE_TYPES.GET_STATUS });
   return Boolean(response && response.overlayEnabled);
 }
 
@@ -48,7 +35,7 @@ async function activateOverlay(tabId, drawingMode = false) {
   }
 
   const response = await sendTabMessage(tabId, {
-    type: 'BBRUSH_ENABLE_OVERLAY',
+    type: MESSAGE_TYPES.ENABLE_OVERLAY,
     drawingMode
   });
 
@@ -63,7 +50,7 @@ async function toggleOverlayForTab(tabId) {
   const isActive = await getOverlayStatus(tabId);
 
   if (isActive) {
-    await sendTabMessage(tabId, { type: 'BBRUSH_DISABLE_OVERLAY' });
+    await sendTabMessage(tabId, { type: MESSAGE_TYPES.DISABLE_OVERLAY });
     return { ok: true, active: false };
   }
 
@@ -83,7 +70,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   const { tabId } = message;
 
-  if (message.type === 'POPUP_GET_STATUS') {
+  if (message.type === MESSAGE_TYPES.POPUP_GET_STATUS) {
     (async () => {
       const isActive = await getOverlayStatus(tabId);
       sendResponse({ ok: true, active: isActive });
@@ -92,7 +79,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
-  if (message.type !== 'POPUP_TOGGLE_OVERLAY') {
+  if (message.type !== MESSAGE_TYPES.POPUP_TOGGLE_OVERLAY) {
     return;
   }
 
@@ -134,12 +121,12 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 
   if (command === 'toggle-toolbar-panel') {
-    await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_PANEL' });
+    await sendTabMessage(tabId, { type: MESSAGE_TYPES.TOGGLE_PANEL });
     return;
   }
 
   if (command === 'toggle-drawing-mode' && isActive) {
-    await sendTabMessage(tabId, { type: 'BBRUSH_TOGGLE_DRAWING_MODE' });
+    await sendTabMessage(tabId, { type: MESSAGE_TYPES.TOGGLE_DRAWING_MODE });
   }
 });
 

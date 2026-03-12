@@ -23,7 +23,10 @@
 1. Clone this repository.
 2. Open Chrome and go to `chrome://extensions`.
 3. Enable **Developer mode**.
-4. Click **Load unpacked** and select this project folder.
+4. Use Node `^20.19.0 || >=22.12.0`.
+5. Run `npm install`.
+6. Run `npm run build`.
+7. Click **Load unpacked** and select the `dist/` folder.
 
 ## Usage
 
@@ -53,9 +56,12 @@
 
 ## Development
 
-This project has no build step and no automated test runner.
+This project uses Vite for bundling and still has no automated test runner.
 
+- Required Node version: `^20.19.0 || >=22.12.0`
 - Install dependencies: `npm install`
+- Build the extension: `npm run build`
+- Rebuild in watch mode: `npm run dev`
 - Lint: `npm run lint`
 - Lint with fixes: `npm run lint:fix`
 - Format: `npm run format`
@@ -63,11 +69,12 @@ This project has no build step and no automated test runner.
 
 ## Project Structure
 
-- `manifest.json`: extension metadata, permissions, and commands
-- `background.js`: service worker, command/action handling, tab messaging
-- `content_script.js`: drawing engine, state, interactions, toolbar injection
-- `popup.html` + `popup.js`: popup UI
-- `toolbar.css`: toolbar styles (Shadow DOM)
+- `src/background/`: service worker source entry
+- `src/overlay/`: content-script entry, runtime, feature manifest, and per-feature modules
+- `src/popup/`: popup source entry
+- `src/shared/`: shared constants and icon catalog
+- `src/public/`: manifest, popup HTML, toolbar CSS, and icons copied into `dist/`
+- `dist/`: generated unpacked extension output loaded into Chrome
 
 ## License
 
