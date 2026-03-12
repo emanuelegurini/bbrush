@@ -1,0 +1,42 @@
+@import url('./design-tokens.css');
+
+:root {
+  color: var(--bb-ink);
+  font-family: var(--bb-font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bb-paper);
+  color: var(--bb-ink);
+  font-family: var(--bb-font-body);
+  margin: 0;
+  min-width: 220px;
+  padding: 12px;
+}
+
+h1 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+p {
+  color: var(--bb-ink-soft);
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+button {
+  background: var(--bb-forest);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 8px 10px;
+  width: 100%;
+}
