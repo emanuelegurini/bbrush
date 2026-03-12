@@ -1,5 +1,4 @@
 import { getIconMarkup } from '../../shared/iconCatalog.js';
-import { MESSAGE_TYPES } from '../../shared/messages.js';
 import { PLUGIN_IDS } from '../../shared/pluginIds.js';
 import { createRuntimeState } from './state.js';
 import {
@@ -18,12 +17,14 @@ import { createPluginRuntime } from './pluginRuntime.js';
 import { createSceneRuntime } from './sceneRuntime.js';
 import { createRenderRuntime } from './renderRuntime.js';
 import { createToolbarRuntime } from './toolbarRuntime.js';
+import { createInteractionRuntime } from './interactionRuntime.js';
+import { createNavigationRuntime } from './navigationRuntime.js';
+import { createMessageRuntime } from './messageRuntime.js';
 
 export function createBbrushRuntime(featureRecords = []) {
   const state = createRuntimeState();
 
   let initialized = false;
-  let historyPatched = false;
 
   function logPluginError(message, details) {
     console.error(`[bbrush] ${message}`, details);
@@ -157,6 +158,42 @@ export function createBbrushRuntime(featureRecords = []) {
     updateOverlayInteractionState,
     toggleDrawingMode
   });
+  const interactionRuntime = createInteractionRuntime({
+    state,
+    getPlugins() {
+      return plugins;
+    },
+    getPluginContext,
+    getActiveToolPlugin,
+    callPluginHook,
+    hasActiveInteraction,
+    setQuickMenuVisible,
+    requestRender,
+    updateCanvasCursor,
+    isSpaceShortcut,
+    isEditableTarget
+  });
+  const navigationRuntime = createNavigationRuntime({
+    state,
+    getPlugins() {
+      return plugins;
+    },
+    callPluginHook,
+    releaseTemporaryPassthrough
+  });
+  const messageRuntime = createMessageRuntime({
+    state,
+    getPlugins() {
+      return plugins;
+    },
+    callPluginHook,
+    enableOverlay,
+    disableOverlay,
+    toggleDrawingMode,
+    undoLastAction,
+    clearAll,
+    toggleToolbarExpanded
+  });
 
   function getSceneForMode(mode) {
     return sceneRuntime.getSceneForMode(mode);
@@ -227,53 +264,15 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function updateOverlayInteractionState() {
-    if (!state.core.canvas) {
-      return;
-    }
-
-    const activePlugin = getActiveToolPlugin();
-    const canUseCanvasPointerEvents =
-      activePlugin && activePlugin.usesCanvasPointerEvents !== false;
-
-    const canInteractWithCanvas =
-      state.core.isDrawingMode &&
-      !state.core.isTemporaryPassthrough &&
-      Boolean(canUseCanvasPointerEvents);
-
-    state.core.canvas.style.pointerEvents = canInteractWithCanvas ? 'auto' : 'none';
-
-    if (!state.core.isDrawingMode || state.core.isTemporaryPassthrough) {
-      document.body.style.cursor = '';
-      return;
-    }
-
-    if (state.core.activeToolId === PLUGIN_IDS.HIGHLIGHT) {
-      document.body.style.cursor = 'text';
-      return;
-    }
-
-    document.body.style.cursor = 'crosshair';
-    updateCanvasCursor();
-  }
-
-  function setTemporaryPassthrough(active) {
-    if (!state.core.canvas || state.core.isTemporaryPassthrough === active) {
-      return;
-    }
-
-    state.core.isTemporaryPassthrough = active;
-    updateOverlayInteractionState();
+    interactionRuntime.updateOverlayInteractionState();
   }
 
   function releaseTemporaryPassthrough() {
-    if (state.core.isTemporaryPassthrough) {
-      setTemporaryPassthrough(false);
-    }
+    interactionRuntime.releaseTemporaryPassthrough();
   }
 
   function forceReleaseTemporaryPassthrough() {
-    state.core.isSpacePressed = false;
-    releaseTemporaryPassthrough();
+    interactionRuntime.forceReleaseTemporaryPassthrough();
   }
 
   function updateToolbarState() {
@@ -422,336 +421,22 @@ export function createBbrushRuntime(featureRecords = []) {
     toolbarRuntime.createToolbar();
   }
 
-  function runActiveToolHook(hookName, payload) {
-    const activePlugin = getActiveToolPlugin();
-    if (!activePlugin) {
-      return undefined;
-    }
-
-    return callPluginHook(activePlugin, hookName, payload);
-  }
-
   function handleCanvasPointerDown(event) {
-    if (!state.core.enabled || !state.core.isDrawingMode || !state.core.canvas) {
-      return;
-    }
-
-    runActiveToolHook('onPointerDown', event);
+    interactionRuntime.handleCanvasPointerDown(event);
   }
 
   function handleCanvasPointerMove(event) {
-    if (!state.core.enabled || !state.core.isDrawingMode || !state.core.canvas) {
-      return;
-    }
-
-    runActiveToolHook('onPointerMove', event);
+    interactionRuntime.handleCanvasPointerMove(event);
   }
 
   function handleCanvasPointerUp(event) {
-    if (!state.core.enabled || !state.core.canvas) {
-      return;
-    }
-
-    runActiveToolHook('onPointerUp', event);
-  }
-
-  function shouldBlockKeybindings(event) {
-    return plugins.some((plugin) => {
-      if (typeof plugin.shouldBlockKeybindings !== 'function') {
-        return false;
-      }
-
-      return Boolean(plugin.shouldBlockKeybindings(getPluginContext(plugin.id), event));
-    });
-  }
-
-  function matchesKeybinding(binding, event) {
-    if (!binding || typeof binding.run !== 'function') {
-      return false;
-    }
-
-    const bindingKey = typeof binding.key === 'string' ? binding.key.toLowerCase() : null;
-    const eventKey = typeof event.key === 'string' ? event.key.toLowerCase() : '';
-
-    if (bindingKey && bindingKey !== eventKey) {
-      return false;
-    }
-
-    if (binding.ctrlOrMeta && !(event.ctrlKey || event.metaKey)) {
-      return false;
-    }
-
-    if (binding.alt && !event.altKey) {
-      return false;
-    }
-
-    if (binding.shift && !event.shiftKey) {
-      return false;
-    }
-
-    return true;
-  }
-
-  function runKeybindings(event) {
-    for (const record of state.core.keybindingRecords) {
-      const plugin = getPlugin(record.pluginId);
-      const ctx = getPluginContext(record.pluginId);
-      if (!plugin || !ctx) {
-        continue;
-      }
-
-      if (typeof record.binding.when === 'function' && !record.binding.when(ctx, event)) {
-        continue;
-      }
-
-      if (!matchesKeybinding(record.binding, event)) {
-        continue;
-      }
-
-      const handled = record.binding.run(ctx, event);
-      if (handled !== false) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  function handleDocumentPointerDown(event) {
-    if (state.core.isTemporaryPassthrough && !state.core.isSpacePressed) {
-      releaseTemporaryPassthrough();
-    }
-
-    if (
-      state.core.showQuickMenu &&
-      state.core.toolbarHost &&
-      !event.composedPath().includes(state.core.toolbarHost)
-    ) {
-      setQuickMenuVisible(false);
-    }
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onDocumentPointerDownCapture', event);
-    }
-  }
-
-  function handleDocumentPointerUp(event) {
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onDocumentPointerUpCapture', event);
-    }
-  }
-
-  function handleKeyDown(event) {
-    if (!state.core.enabled) {
-      return;
-    }
-
-    if (
-      state.core.isTemporaryPassthrough &&
-      !isSpaceShortcut(event) &&
-      !state.core.isSpacePressed
-    ) {
-      releaseTemporaryPassthrough();
-    }
-
-    if (
-      isSpaceShortcut(event) &&
-      state.core.isDrawingMode &&
-      !state.core.isTemporaryPassthrough &&
-      !hasActiveInteraction() &&
-      !isEditableTarget(event.target)
-    ) {
-      state.core.isSpacePressed = true;
-      setTemporaryPassthrough(true);
-      event.preventDefault();
-      return;
-    }
-
-    if (shouldBlockKeybindings(event)) {
-      return;
-    }
-
-    if (runKeybindings(event)) {
-      event.preventDefault();
-      return;
-    }
-
-    for (const plugin of plugins) {
-      const handled = callPluginHook(plugin, 'onKeyDown', event);
-      if (handled) {
-        event.preventDefault();
-        return;
-      }
-    }
-  }
-
-  function handleKeyUp(event) {
-    if (!state.core.enabled) {
-      return;
-    }
-
-    if (isSpaceShortcut(event)) {
-      state.core.isSpacePressed = false;
-      releaseTemporaryPassthrough();
-      event.preventDefault();
-      return;
-    }
-
-    for (const plugin of plugins) {
-      const handled = callPluginHook(plugin, 'onKeyUp', event);
-      if (handled) {
-        event.preventDefault();
-        return;
-      }
-    }
-  }
-
-  function handleResize() {
-    if (!state.core.canvas) {
-      return;
-    }
-
-    state.core.canvas.width = window.innerWidth;
-    state.core.canvas.height = window.innerHeight;
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onResize');
-    }
-
-    requestRender();
-  }
-
-  function handleLocationChange() {
-    const nextHref = window.location.href;
-
-    if (!state.core.enabled) {
-      state.core.lastLocationHref = nextHref;
-      return;
-    }
-
-    if (state.core.lastLocationHref === nextHref) {
-      return;
-    }
-
-    const previousHref = state.core.lastLocationHref;
-    state.core.lastLocationHref = nextHref;
-
-    if (!state.core.isSpacePressed) {
-      releaseTemporaryPassthrough();
-    }
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onLocationChange', {
-        previousHref,
-        nextHref
-      });
-    }
-  }
-
-  function patchHistory() {
-    if (historyPatched) {
-      return;
-    }
-
-    historyPatched = true;
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-
-    history.pushState = function pushStateOverride(...args) {
-      const result = originalPushState.apply(this, args);
-      handleLocationChange();
-      return result;
-    };
-
-    history.replaceState = function replaceStateOverride(...args) {
-      const result = originalReplaceState.apply(this, args);
-      handleLocationChange();
-      return result;
-    };
-  }
-
-  function handleRuntimeMessage(message, _sender, sendResponse) {
-    if (!message || typeof message.type !== 'string') {
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.ENABLE_OVERLAY) {
-      enableOverlay(Boolean(message.drawingMode));
-      sendResponse({ ok: true });
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.DISABLE_OVERLAY) {
-      disableOverlay();
-      sendResponse({ ok: true });
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.TOGGLE_DRAWING_MODE) {
-      sendResponse({ ok: true, drawingMode: toggleDrawingMode() });
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.UNDO) {
-      sendResponse({ ok: true, changed: undoLastAction() });
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.CLEAR_ALL) {
-      clearAll();
-      sendResponse({ ok: true });
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.TOGGLE_PANEL) {
-      toggleToolbarExpanded();
-      sendResponse({ ok: true, expanded: state.core.isToolbarExpanded });
-      return;
-    }
-
-    if (message.type === MESSAGE_TYPES.GET_STATUS) {
-      sendResponse({
-        ok: true,
-        overlayEnabled: state.core.enabled,
-        drawingMode: state.core.isDrawingMode
-      });
-      return;
-    }
-
-    for (const plugin of plugins) {
-      const response = callPluginHook(plugin, 'onMessage', message);
-      if (response !== undefined) {
-        sendResponse(response);
-        return;
-      }
-    }
+    interactionRuntime.handleCanvasPointerUp(event);
   }
 
   function installListeners() {
-    chrome.runtime.onMessage.addListener(handleRuntimeMessage);
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-    document.addEventListener('pointerdown', handleDocumentPointerDown, true);
-    document.addEventListener('pointerup', handleDocumentPointerUp, true);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') {
-        forceReleaseTemporaryPassthrough();
-      }
-
-      for (const plugin of plugins) {
-        callPluginHook(plugin, 'onVisibilityChange', document.visibilityState);
-      }
-    });
-    window.addEventListener('blur', () => {
-      forceReleaseTemporaryPassthrough();
-      for (const plugin of plugins) {
-        callPluginHook(plugin, 'onWindowBlur');
-      }
-    });
-    window.addEventListener('hashchange', handleLocationChange);
-    window.addEventListener('popstate', handleLocationChange);
-    window.addEventListener('resize', handleResize);
-    patchHistory();
+    messageRuntime.installMessageListener();
+    interactionRuntime.installInteractionListeners();
+    navigationRuntime.installNavigationListeners();
   }
 
   function enableOverlay(startDrawingMode) {
