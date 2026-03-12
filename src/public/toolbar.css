@@ -137,12 +137,12 @@
 }
 
 .bbrush-panel {
-  left: 56px;
+  left: 74px;
   opacity: 0;
   pointer-events: none;
   position: absolute;
   top: 50%;
-  transform: translate(-6px, -50%);
+  transform: translate(-8px, -50%);
   visibility: hidden;
   transition:
     opacity 170ms ease,
@@ -159,18 +159,16 @@
 }
 
 .bbrush-toolbar {
-  align-items: center;
   backdrop-filter: blur(10px);
   background: var(--bb-surface);
   border: 1px solid var(--bb-border);
-  border-radius: 12px;
+  border-radius: 32px;
   box-shadow: var(--bb-shadow-soft);
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  max-width: min(640px, calc(100vw - 56px));
-  overflow-x: auto;
-  padding: 10px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(154px, 180px) minmax(180px, 210px) minmax(252px, 292px);
+  max-width: min(760px, calc(100vw - 92px));
+  padding: 14px;
 }
 
 .bbrush-toolbar.is-drawing {
@@ -178,6 +176,57 @@
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--bb-accent) 30%, transparent),
     var(--bb-shadow-soft);
+}
+
+.bbrush-toolbar-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(252, 247, 241, 0.94));
+  border: 1px solid rgba(20, 57, 46, 0.08);
+  border-radius: 26px;
+  box-shadow: 0 10px 18px rgba(29, 70, 52, 0.08);
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.bbrush-toolbar-card-mode {
+  align-content: start;
+  background:
+    radial-gradient(circle at top right, rgba(191, 231, 125, 0.52), transparent 34%),
+    linear-gradient(145deg, rgba(244, 255, 237, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.bbrush-toolbar-card-settings {
+  background:
+    radial-gradient(circle at top right, rgba(244, 188, 122, 0.42), transparent 34%),
+    linear-gradient(145deg, rgba(255, 251, 243, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.bbrush-toolbar-card-tools {
+  background:
+    radial-gradient(circle at top right, rgba(199, 182, 255, 0.42), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(250, 246, 255, 0.94));
+  grid-column: span 2;
+}
+
+.bbrush-toolbar-card-actions {
+  background:
+    radial-gradient(circle at top right, rgba(185, 211, 255, 0.42), transparent 36%),
+    linear-gradient(145deg, rgba(246, 250, 255, 0.98), rgba(255, 255, 255, 0.94));
+}
+
+.bbrush-toolbar-card-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.bbrush-card-eyebrow {
+  color: rgba(20, 57, 46, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .bbrush-toolbar-handle {
@@ -189,6 +238,35 @@
   padding: 0 4px;
   text-transform: uppercase;
   user-select: none;
+}
+
+.bbrush-mode-actions,
+.bbrush-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bbrush-settings-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.bbrush-toolbar-color-field {
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(20, 57, 46, 0.08);
+  border-radius: 20px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.bbrush-field-label {
+  color: rgba(20, 57, 46, 0.68);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .bbrush-toolbar-field {
@@ -215,42 +293,57 @@
 .bbrush-toolbar-field input[type='color'] {
   background: transparent;
   border: none;
+  border-radius: 999px;
+  box-shadow: 0 6px 12px rgba(29, 70, 52, 0.1);
   cursor: pointer;
-  height: 24px;
+  height: 34px;
   padding: 0;
-  width: 28px;
+  width: 38px;
 }
 
 .bbrush-toolbar-field input[type='range'] {
   accent-color: var(--bb-accent);
   cursor: pointer;
-  width: 90px;
+  width: 100%;
+}
+
+.bbrush-toolbar-size-shell {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(20, 57, 46, 0.08);
+  border-radius: 20px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  padding: 10px 12px;
 }
 
 .bbrush-toolbar-size {
-  max-width: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 0;
   opacity: 0;
   overflow: hidden;
   transition:
-    max-width 180ms ease,
+    max-height 180ms ease,
     opacity 180ms ease;
 }
 
 .bbrush-toolbar-size.is-expanded {
-  max-width: 190px;
+  max-height: 80px;
   opacity: 1;
 }
 
 .bbrush-toolbar button {
   background: var(--bb-btn);
-  border: 1px solid rgba(182, 196, 214, 0.16);
-  border-radius: 8px;
+  border: 1px solid rgba(20, 57, 46, 0.08);
+  border-radius: 18px;
   color: var(--bb-text);
   cursor: pointer;
   font-size: 12px;
+  font-family: inherit;
   font-weight: 600;
   line-height: 1;
-  padding: 8px 10px;
+  padding: 10px 12px;
   transition:
     background 120ms ease,
     border-color 120ms ease,
@@ -260,20 +353,21 @@
 .bbrush-icon-button {
   align-items: center;
   display: inline-flex;
-  height: 34px;
+  gap: 8px;
+  height: 46px;
   justify-content: center;
-  min-width: 34px;
-  padding: 0;
+  min-width: 46px;
+  padding: 0 12px;
 }
 
 .bbrush-icon-button svg {
   fill: none;
-  height: 16px;
+  height: 18px;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.8;
-  width: 16px;
+  stroke-width: 1.9;
+  width: 18px;
 }
 
 .bbrush-toolbar button:hover {
@@ -290,12 +384,31 @@
 }
 
 .bbrush-toolbar [data-role='annotate-toggle'] {
-  background: color-mix(in srgb, var(--bb-accent) 18%, #121a28);
-  border-color: color-mix(in srgb, var(--bb-accent) 55%, #ffffff);
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(47, 122, 84, 0.18);
 }
 
 .bbrush-toolbar [data-role='annotate-toggle'].is-active {
-  background: color-mix(in srgb, var(--bb-accent) 32%, #111827);
+  background: color-mix(in srgb, var(--bb-lime) 50%, white);
+}
+
+.bbrush-tool-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.bbrush-tool-grid .bbrush-icon-button {
+  align-items: center;
+  flex-direction: column;
+  height: 76px;
+  justify-content: center;
+  padding: 0;
+}
+
+.bbrush-action-row .bbrush-icon-button,
+.bbrush-mode-actions .bbrush-icon-button {
+  flex: 1 1 0;
 }
 
 .bbrush-toolbar button:disabled,
@@ -313,15 +426,18 @@
 }
 
 .bbrush-shortcuts {
-  background: rgba(8, 14, 20, 0.96);
-  border: 1px solid var(--bb-border);
-  border-radius: 8px;
+  background:
+    radial-gradient(circle at top right, rgba(185, 211, 255, 0.35), transparent 32%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(250, 247, 255, 0.94));
+  border: 1px solid rgba(20, 57, 46, 0.08);
+  border-radius: 26px;
   color: var(--bb-text-muted);
   display: none;
   font-size: 11px;
   gap: 4px;
+  grid-column: span 3;
   min-width: 220px;
-  padding: 8px;
+  padding: 14px;
   width: 100%;
 }
 
@@ -331,6 +447,21 @@
 
 .bbrush-shortcuts strong {
   color: var(--bb-text);
-  font-size: 12px;
-  margin-bottom: 2px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 760px) {
+  .bbrush-toolbar {
+    grid-template-columns: minmax(220px, 1fr);
+  }
+
+  .bbrush-toolbar-card-tools,
+  .bbrush-shortcuts {
+    grid-column: span 1;
+  }
+
+  .bbrush-tool-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

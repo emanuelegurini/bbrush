@@ -178,9 +178,23 @@ export function createToolbarRuntime({
   }
 
   function populateToolbarUi(shadowRoot) {
-    const dynamicButtonsRoot = shadowRoot.querySelector('[data-role="dynamic-buttons"]');
+    const actionRow = shadowRoot.querySelector('[data-role="action-row"]');
+    const modeActions = shadowRoot.querySelector('[data-role="mode-actions"]');
     const quickMenu = shadowRoot.querySelector('[data-role="quick-menu"]');
     const shortcutsPanel = shadowRoot.querySelector('[data-role="shortcuts-panel"]');
+    const toolGrid = shadowRoot.querySelector('[data-role="tool-grid"]');
+
+    function getToolbarTarget(descriptor) {
+      if (descriptor.id === 'mode-whiteboard') {
+        return modeActions;
+      }
+
+      if (typeof descriptor.id === 'string' && descriptor.id.startsWith('tool-')) {
+        return toolGrid;
+      }
+
+      return actionRow;
+    }
 
     for (const record of state.core.toolbarButtonRecords) {
       const button = buildIconButton(record.descriptor);
@@ -192,7 +206,7 @@ export function createToolbarRuntime({
 
         record.descriptor.onClick(ctx, event);
       });
-      dynamicButtonsRoot.appendChild(button);
+      getToolbarTarget(record.descriptor).appendChild(button);
       record.button = button;
     }
 
@@ -242,19 +256,47 @@ export function createToolbarRuntime({
         </div>
         <div class="bbrush-panel" data-role="panel" hidden>
           <div class="bbrush-toolbar">
-            <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
-            <button class="bbrush-icon-button" data-role="annotate-toggle" aria-label="Toggle annotation" title="Enable annotation"></button>
-            <label class="bbrush-toolbar-field">
-              <span class="bbrush-visually-hidden">Color</span>
-              <input data-role="color" type="color" value="#ff00bb" />
-            </label>
-            <button class="bbrush-icon-button" data-role="size-toggle" aria-label="Toggle size" title="Show size"></button>
-            <label class="bbrush-toolbar-field bbrush-toolbar-size" data-role="size-field">
-              <span data-role="size-label">Pen size</span>
-              <input data-role="size" type="range" min="1" max="24" value="4" />
-            </label>
-            <div data-role="dynamic-buttons" style="display: contents;"></div>
-            <div class="bbrush-shortcuts" data-role="shortcuts-panel">
+            <div class="bbrush-toolbar-card bbrush-toolbar-card-mode">
+              <div class="bbrush-toolbar-card-head">
+                <div class="bbrush-toolbar-handle" data-role="drag">bbrush</div>
+                <span class="bbrush-card-eyebrow">Modes</span>
+              </div>
+              <div class="bbrush-mode-actions" data-role="mode-actions">
+                <button class="bbrush-icon-button" data-role="annotate-toggle" aria-label="Toggle annotation" title="Enable annotation"></button>
+              </div>
+            </div>
+            <div class="bbrush-toolbar-card bbrush-toolbar-card-settings">
+              <div class="bbrush-toolbar-card-head">
+                <span class="bbrush-card-eyebrow">Style</span>
+              </div>
+              <div class="bbrush-settings-grid">
+                <label class="bbrush-toolbar-field bbrush-toolbar-color-field">
+                  <span class="bbrush-visually-hidden">Color</span>
+                  <span class="bbrush-field-label">Color</span>
+                  <input data-role="color" type="color" value="#ff00bb" />
+                </label>
+                <div class="bbrush-toolbar-size-shell">
+                  <button class="bbrush-icon-button" data-role="size-toggle" aria-label="Toggle size" title="Show size"></button>
+                  <label class="bbrush-toolbar-field bbrush-toolbar-size" data-role="size-field">
+                    <span data-role="size-label">Pen size</span>
+                    <input data-role="size" type="range" min="1" max="24" value="4" />
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="bbrush-toolbar-card bbrush-toolbar-card-tools">
+              <div class="bbrush-toolbar-card-head">
+                <span class="bbrush-card-eyebrow">Tools</span>
+              </div>
+              <div class="bbrush-tool-grid" data-role="tool-grid"></div>
+            </div>
+            <div class="bbrush-toolbar-card bbrush-toolbar-card-actions">
+              <div class="bbrush-toolbar-card-head">
+                <span class="bbrush-card-eyebrow">Actions</span>
+              </div>
+              <div class="bbrush-action-row" data-role="action-row"></div>
+            </div>
+            <div class="bbrush-shortcuts bbrush-toolbar-card" data-role="shortcuts-panel">
               <strong>Shortcuts</strong>
             </div>
           </div>
