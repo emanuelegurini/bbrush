@@ -315,6 +315,10 @@ export function createBbrushRuntime(featureRecords = []) {
     toolbarRuntime.toggleShortcuts();
   }
 
+  function adjustActiveSize(delta) {
+    return modeRuntime.adjustActiveSize(delta);
+  }
+
   function setDrawingMode(active) {
     modeRuntime.setDrawingMode(active);
   }
