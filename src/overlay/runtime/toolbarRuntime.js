@@ -55,21 +55,20 @@ export function createToolbarRuntime({
         continue;
       }
 
-      const plugin = getPluginContext(record.pluginId);
-      if (!plugin) {
+      const ctx = getPluginContext(record.pluginId);
+      if (!ctx) {
         continue;
       }
 
       const { descriptor } = record;
-      const isActive = typeof descriptor.isActive === 'function' && descriptor.isActive(plugin);
-      const isDisabled =
-        typeof descriptor.isDisabled === 'function' && descriptor.isDisabled(plugin);
+      const isActive = typeof descriptor.isActive === 'function' && descriptor.isActive(ctx);
+      const isDisabled = typeof descriptor.isDisabled === 'function' && descriptor.isDisabled(ctx);
 
       record.button.classList.toggle('is-active', Boolean(isActive));
       record.button.disabled = Boolean(isDisabled);
 
       if (typeof descriptor.getTitle === 'function') {
-        record.button.title = descriptor.getTitle(plugin);
+        record.button.title = descriptor.getTitle(ctx);
       }
     }
   }
