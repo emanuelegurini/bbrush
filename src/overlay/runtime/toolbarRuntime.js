@@ -182,6 +182,8 @@ export function createToolbarRuntime({
     const modeActions = shadowRoot.querySelector('[data-role="mode-actions"]');
     const quickMenu = shadowRoot.querySelector('[data-role="quick-menu"]');
     const shortcutsPanel = shadowRoot.querySelector('[data-role="shortcuts-panel"]');
+    const shortcutsList =
+      shadowRoot.querySelector('[data-role="shortcuts-list"]') || shortcutsPanel;
     const toolGrid = shadowRoot.querySelector('[data-role="tool-grid"]');
 
     function getToolbarTarget(descriptor) {
@@ -227,7 +229,7 @@ export function createToolbarRuntime({
     for (const shortcutLine of state.core.shortcutLines) {
       const line = document.createElement('span');
       line.textContent = shortcutLine.text;
-      shortcutsPanel.appendChild(line);
+      shortcutsList.appendChild(line);
     }
   }
 
@@ -297,7 +299,14 @@ export function createToolbarRuntime({
               <div class="bbrush-action-row" data-role="action-row"></div>
             </div>
             <div class="bbrush-shortcuts bbrush-toolbar-card" data-role="shortcuts-panel">
-              <strong>Shortcuts</strong>
+              <div class="bbrush-toolbar-card-head">
+                <strong>Shortcuts</strong>
+                <span class="bbrush-shortcuts-badge">?</span>
+              </div>
+              <p class="bbrush-shortcuts-copy">
+                Fast toggles for annotate mode, sizes, cleanup, and whiteboard flow.
+              </p>
+              <div class="bbrush-shortcuts-list" data-role="shortcuts-list"></div>
             </div>
           </div>
         </div>

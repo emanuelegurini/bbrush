@@ -165,10 +165,10 @@
   border-radius: 32px;
   box-shadow: var(--bb-shadow-soft);
   display: grid;
-  gap: 12px;
+  gap: 14px;
   grid-template-columns: minmax(154px, 180px) minmax(180px, 210px) minmax(252px, 292px);
   max-width: min(760px, calc(100vw - 92px));
-  padding: 14px;
+  padding: 16px;
 }
 
 .bbrush-toolbar.is-drawing {
@@ -184,9 +184,9 @@
   border-radius: 26px;
   box-shadow: 0 10px 18px rgba(29, 70, 52, 0.08);
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 14px;
+  padding: 16px;
 }
 
 .bbrush-toolbar-card-mode {
@@ -242,9 +242,9 @@
 
 .bbrush-mode-actions,
 .bbrush-action-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .bbrush-settings-grid {
@@ -378,6 +378,16 @@
   transform: translateY(1px);
 }
 
+.bbrush-launcher:focus-visible,
+.bbrush-toolbar button:focus-visible,
+.bbrush-quick-menu button:focus-visible,
+.bbrush-toolbar input:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(191, 231, 125, 0.36),
+    0 12px 20px rgba(29, 70, 52, 0.16);
+}
+
 .bbrush-toolbar button.is-active {
   background: var(--bb-btn-active);
   border-color: color-mix(in srgb, var(--bb-accent) 65%, #ffffff);
@@ -395,20 +405,52 @@
 .bbrush-tool-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .bbrush-tool-grid .bbrush-icon-button {
   align-items: center;
-  flex-direction: column;
-  height: 76px;
-  justify-content: center;
-  padding: 0;
+  display: grid;
+  gap: 10px;
+  grid-auto-rows: min-content;
+  height: 94px;
+  justify-items: center;
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.bbrush-tool-grid .bbrush-icon-button::after,
+.bbrush-action-row .bbrush-icon-button::after,
+.bbrush-mode-actions .bbrush-icon-button::after {
+  color: rgba(20, 57, 46, 0.78);
+  content: attr(aria-label);
+  display: block;
+  font-family: var(--bb-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
 .bbrush-action-row .bbrush-icon-button,
 .bbrush-mode-actions .bbrush-icon-button {
-  flex: 1 1 0;
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-auto-flow: column;
+  grid-template-columns: 18px minmax(0, 1fr);
+  height: 56px;
+  justify-content: start;
+  justify-items: start;
+  min-width: 0;
+  padding: 0 14px;
+  text-align: left;
+}
+
+.bbrush-action-row .bbrush-icon-button::after,
+.bbrush-mode-actions .bbrush-icon-button::after {
+  font-size: 12px;
 }
 
 .bbrush-toolbar button:disabled,
@@ -448,12 +490,67 @@
 .bbrush-shortcuts strong {
   color: var(--bb-text);
   font-size: 13px;
-  margin-bottom: 4px;
+  margin: 0;
+}
+
+.bbrush-shortcuts-badge {
+  align-items: center;
+  background: rgba(199, 182, 255, 0.52);
+  border-radius: 999px;
+  color: var(--bb-ink);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.bbrush-shortcuts-copy {
+  color: rgba(20, 57, 46, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 48ch;
+}
+
+.bbrush-shortcuts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bbrush-shortcuts span {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(20, 57, 46, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 8px 18px rgba(29, 70, 52, 0.06);
+  color: rgba(20, 57, 46, 0.78);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 8px 10px;
+}
+
+@media (max-width: 940px) {
+  .bbrush-toolbar {
+    grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.25fr);
+    max-width: min(640px, calc(100vw - 92px));
+  }
+
+  .bbrush-toolbar-card-tools,
+  .bbrush-shortcuts {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 760px) {
   .bbrush-toolbar {
+    border-radius: 28px;
     grid-template-columns: minmax(220px, 1fr);
+    max-width: min(360px, calc(100vw - 56px));
+    padding: 14px;
   }
 
   .bbrush-toolbar-card-tools,
@@ -461,7 +558,48 @@
     grid-column: span 1;
   }
 
+  .bbrush-mode-actions,
+  .bbrush-action-row,
   .bbrush-tool-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bbrush-action-row .bbrush-icon-button,
+  .bbrush-mode-actions .bbrush-icon-button {
+    grid-template-columns: 1fr;
+    height: 72px;
+    justify-items: center;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .bbrush-action-row .bbrush-icon-button::after,
+  .bbrush-mode-actions .bbrush-icon-button::after {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 560px) {
+  .bbrush-panel {
+    left: 0;
+    top: 72px;
+    transform: translateY(0);
+  }
+
+  .bbrush-panel.is-open {
+    transform: translateY(0);
+  }
+
+  .bbrush-toolbar {
+    max-width: min(320px, calc(100vw - 36px));
+  }
+
+  .bbrush-toolbar-card {
+    border-radius: 22px;
+    padding: 14px;
+  }
+
+  .bbrush-shortcuts-copy {
+    font-size: 11px;
   }
 }
