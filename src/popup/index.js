@@ -1,3 +1,5 @@
+import { MESSAGE_TYPES } from '../shared/messages.js';
+
 const statusElement = document.getElementById('status');
 const toggleButton = document.getElementById('toggle-overlay');
 
@@ -29,7 +31,7 @@ async function refreshStatus() {
     return;
   }
 
-  chrome.runtime.sendMessage({ type: 'POPUP_GET_STATUS', tabId }, (response) => {
+  chrome.runtime.sendMessage({ type: MESSAGE_TYPES.POPUP_GET_STATUS, tabId }, (response) => {
     if (chrome.runtime.lastError || !response || !response.ok) {
       setUiState(false);
       return;
@@ -47,7 +49,7 @@ toggleButton.addEventListener('click', async () => {
     return;
   }
 
-  chrome.runtime.sendMessage({ type: 'POPUP_TOGGLE_OVERLAY', tabId }, (response) => {
+  chrome.runtime.sendMessage({ type: MESSAGE_TYPES.POPUP_TOGGLE_OVERLAY, tabId }, (response) => {
     if (chrome.runtime.lastError) {
       statusElement.textContent = 'Could not toggle overlay.';
       return;

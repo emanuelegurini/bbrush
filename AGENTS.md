@@ -1,30 +1,34 @@
 # AGENTS.md
 
 Guidance for coding agents working in this repository.
-This project is a plain Chrome extension codebase (Manifest V3, no build step, no test runner).
+This project is a Vite-built Chrome extension codebase (Manifest V3, no automated test runner).
 
 ## Project Snapshot
 
 - Name: `bbrush`
 - Stack: JavaScript, CSS, HTML
-- Runtime: service worker (`background.js`), content script (`content_script.js`), popup (`popup.js`)
+- Runtime outputs: service worker (`dist/background.js`), content script (`dist/content-script.js`), popup (`dist/popup.js`)
 - Package manager: npm
 - Module mode: `"type": "commonjs"`
 
 ## Source Layout
 
-- `manifest.json`: permissions, commands, extension metadata
-- `background.js`: tab messaging, overlay activation/deactivation, command handlers
-- `content_script.js`: drawing engine, toolbar UI, pointer/keyboard logic, message listener
-- `popup.html` + `popup.js`: popup UI/status and toggle control
-- `toolbar.css`: Shadow DOM toolbar styles
+- `src/background/`: service worker module source
+- `src/overlay/`: content-script entry, runtime core, feature manifest, and feature modules
+- `src/popup/`: popup module source
+- `src/shared/`: shared constants and icon catalog
+- `src/public/`: manifest, popup HTML, toolbar CSS, and icons copied to `dist/`
+- `dist/`: generated unpacked extension loaded into Chrome
 - `eslint.config.js`, `.prettierrc`, `.editorconfig`: lint/format standards
+- `vite.config.js`: build configuration
 
 ## Build / Lint / Test Commands
 
-There is currently **no build script** and **no automated test suite**.
+There is currently **no automated test suite**.
 
 - Install deps: `npm install`
+- Build extension: `npm run build`
+- Watch rebuilds into `dist/`: `npm run dev`
 - Lint all JS: `npm run lint`
 - Lint with autofix: `npm run lint:fix`
 - Format all files: `npm run format`
@@ -45,11 +49,12 @@ Use this for functional verification:
 
 1. Run `npm run lint`.
 2. Run `npm run format:check`.
-3. Open `chrome://extensions` and enable Developer Mode.
-4. Load unpacked extension from repository root.
-5. Verify popup status text and toggle button behavior.
-6. On a normal webpage, verify overlay toggle, drawing mode toggle, pen/text/arrow tools, undo/clear, and shortcuts panel.
-7. Reload extension after changing `background.js` or `content_script.js`.
+3. Run `npm run build`.
+4. Open `chrome://extensions` and enable Developer Mode.
+5. Load unpacked extension from `dist/`.
+6. Verify popup status text and toggle button behavior.
+7. On a normal webpage, verify overlay toggle, drawing mode toggle, pen/text/arrow tools, undo/clear, and shortcuts panel.
+8. Reload extension after changing files under `src/` and rebuilding.
 
 ## Lint Rules (Enforced)
 
@@ -57,7 +62,8 @@ From `eslint.config.js`:
 
 - Files: `**/*.js`
 - `ecmaVersion: 'latest'`
-- `sourceType: 'script'` (non-ESM)
+- `sourceType: 'module'` for `src/**/*.js`
+- `sourceType: 'commonjs'` for repo-root config files and `scripts/**/*.js`
 - `eqeqeq: ['error', 'always']`
 - `curly: ['error', 'all']`
 - `no-unused-vars: error` with ignore pattern for names prefixed with `_`
@@ -81,8 +87,9 @@ From `.prettierrc` + `.editorconfig`:
 
 ### Imports / Modules
 
-- Keep current script-based architecture; do not introduce `import`/`export` casually.
-- If module migration is needed, update manifest/runtime config holistically first.
+- Use ESM in `src/**/*.js`.
+- Keep repo-root config and helper scripts in CommonJS unless there is a clear reason to change them.
+- Preserve the current Vite entry/output contract when adding or moving runtime modules.
 
 ### Function Style
 
@@ -93,7 +100,7 @@ From `.prettierrc` + `.editorconfig`:
 
 ### State Management
 
-- Keep mutable UI/runtime data inside centralized `state` objects (as in `content_script.js`).
+- Keep mutable UI/runtime data inside centralized `state` objects in the overlay runtime.
 - Keep no-selection states explicit via `null` where current code already does so.
 - Update related state fields together to avoid mode drift (tool, selection, interaction mode).
 
@@ -142,12 +149,14 @@ From `.prettierrc` + `.editorconfig`:
 - Keep `replayStrokes()` as canonical redraw path.
 - Avoid unnecessary redraws and unnecessary deep clones.
 - Preserve history-cap and undo semantics unless intentionally changing behavior.
+- Keep the content script build output to a single injected artifact (`dist/content-script.js`).
 
 ### Security / Permissions
 
 - Avoid permission creep in `manifest.json`.
 - Treat unsupported pages (`chrome://`, extension pages, stores) as expected failures.
 - Do not inject remote scripts or external runtime resources.
+- Keep JavaScript modules out of `web_accessible_resources`; only true static assets should be exposed there.
 
 ## Agent Checklist Before Finishing
 
