@@ -1,5 +1,4 @@
 import { getIconMarkup } from '../../shared/iconCatalog.js';
-import { PLUGIN_IDS } from '../../shared/pluginIds.js';
 import { createRuntimeState } from './state.js';
 import {
   cloneStrokes,
@@ -20,6 +19,8 @@ import { createToolbarRuntime } from './toolbarRuntime.js';
 import { createInteractionRuntime } from './interactionRuntime.js';
 import { createNavigationRuntime } from './navigationRuntime.js';
 import { createMessageRuntime } from './messageRuntime.js';
+import { createModeRuntime } from './modeRuntime.js';
+import { createOverlayLifecycle } from './overlayLifecycle.js';
 
 export function createBbrushRuntime(featureRecords = []) {
   const state = createRuntimeState();
@@ -68,21 +69,6 @@ export function createBbrushRuntime(featureRecords = []) {
     ) {
       state.core.canvas.releasePointerCapture(pointerId);
     }
-  }
-
-  function adjustActiveSize(delta) {
-    if (!Number.isFinite(delta) || delta === 0) {
-      return false;
-    }
-
-    if (state.core.activeToolId === PLUGIN_IDS.TEXT) {
-      state.shared.textSize = Math.max(12, Math.min(96, state.shared.textSize + delta));
-    } else {
-      state.shared.penSize = Math.max(1, Math.min(24, state.shared.penSize + delta));
-    }
-
-    updateToolbarState();
-    return true;
   }
 
   const pluginRuntime = createPluginRuntime({
@@ -173,6 +159,21 @@ export function createBbrushRuntime(featureRecords = []) {
     isSpaceShortcut,
     isEditableTarget
   });
+  const modeRuntime = createModeRuntime({
+    state,
+    getPlugins() {
+      return plugins;
+    },
+    getPlugin,
+    callPluginHook,
+    ensureHistoryInitialized,
+    getActiveScene,
+    recomputeNextEntryId,
+    clearSelection,
+    requestRender,
+    updateOverlayInteractionState,
+    updateToolbarState
+  });
   const navigationRuntime = createNavigationRuntime({
     state,
     getPlugins() {
@@ -193,6 +194,25 @@ export function createBbrushRuntime(featureRecords = []) {
     undoLastAction,
     clearAll,
     toggleToolbarExpanded
+  });
+  const overlayLifecycle = createOverlayLifecycle({
+    state,
+    getPlugins() {
+      return plugins;
+    },
+    callPluginHook,
+    ensureHistoryInitialized,
+    getActiveScene,
+    recomputeNextEntryId,
+    createToolbar,
+    setDrawingMode,
+    updateToolbarState,
+    requestRender,
+    clearSelection,
+    forceReleaseTemporaryPassthrough,
+    handleCanvasPointerDown,
+    handleCanvasPointerMove,
+    handleCanvasPointerUp
   });
 
   function getSceneForMode(mode) {
@@ -296,91 +316,19 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function setDrawingMode(active) {
-    if (!state.core.canvas) {
-      return;
-    }
-
-    state.core.isDrawingMode = active;
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onDrawingModeChange', { active });
-    }
-
-    if (!active) {
-      clearSelection({ reason: 'drawing-mode-disabled', render: false });
-      state.core.isSpacePressed = false;
-      state.core.isTemporaryPassthrough = false;
-      requestRender();
-    }
-
-    updateOverlayInteractionState();
-    updateToolbarState();
+    modeRuntime.setDrawingMode(active);
   }
 
   function setCanvasMode(mode, options = {}) {
-    if (mode !== 'page' && mode !== 'whiteboard') {
-      return;
-    }
-
-    if (state.core.canvasMode === mode) {
-      return;
-    }
-
-    const previousMode = state.core.canvasMode;
-    state.core.canvasMode = mode;
-    ensureHistoryInitialized(getActiveScene());
-    recomputeNextEntryId();
-    clearSelection({ reason: 'canvas-mode-changed', render: false });
-
-    if (!state.core.isDrawingMode && options.autoEnableDrawing !== false) {
-      setDrawingMode(true);
-    }
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onCanvasModeChange', { previousMode, mode });
-    }
-
-    requestRender();
-    updateToolbarState();
+    modeRuntime.setCanvasMode(mode, options);
   }
 
   function toggleCanvasMode() {
-    setCanvasMode(state.core.canvasMode === 'whiteboard' ? 'page' : 'whiteboard');
+    modeRuntime.toggleCanvasMode();
   }
 
   function setActiveTool(pluginId, options = {}) {
-    const nextPlugin = getPlugin(pluginId);
-    if (!nextPlugin) {
-      return;
-    }
-
-    const previousToolId = state.core.activeToolId;
-    const previousPlugin = getPlugin(previousToolId);
-
-    if (previousPlugin && previousToolId !== pluginId) {
-      callPluginHook(previousPlugin, 'onToolDeactivate', {
-        nextToolId: pluginId
-      });
-    }
-
-    state.core.activeToolId = pluginId;
-    clearSelection({
-      reason: 'tool-changed',
-      exceptPluginId: pluginId,
-      render: false
-    });
-
-    callPluginHook(nextPlugin, 'onToolActivate', {
-      previousToolId
-    });
-
-    if (!state.core.isDrawingMode && options.autoEnableDrawing !== false) {
-      setDrawingMode(true);
-    }
-
-    requestRender();
-    updateOverlayInteractionState();
-    updateToolbarState();
+    modeRuntime.setActiveTool(pluginId, options);
   }
 
   function undoLastAction() {
@@ -389,32 +337,6 @@ export function createBbrushRuntime(featureRecords = []) {
 
   function clearAll() {
     return sceneRuntime.clearAll();
-  }
-
-  function createCanvas() {
-    if (state.core.canvas) {
-      return;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.id = 'bbrush-canvas';
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    canvas.style.left = '0';
-    canvas.style.pointerEvents = 'none';
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.zIndex = '2147483647';
-    canvas.style.cursor = 'crosshair';
-
-    canvas.addEventListener('pointerdown', handleCanvasPointerDown);
-    canvas.addEventListener('pointermove', handleCanvasPointerMove);
-    canvas.addEventListener('pointerup', handleCanvasPointerUp);
-    canvas.addEventListener('pointerleave', handleCanvasPointerUp);
-
-    document.body.appendChild(canvas);
-    state.core.canvas = canvas;
-    state.core.context = canvas.getContext('2d');
   }
 
   function createToolbar() {
@@ -440,65 +362,15 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function enableOverlay(startDrawingMode) {
-    if (state.core.enabled) {
-      setDrawingMode(Boolean(startDrawingMode));
-      updateToolbarState();
-      return;
-    }
-
-    createCanvas();
-    createToolbar();
-    ensureHistoryInitialized(getActiveScene());
-    recomputeNextEntryId();
-
-    state.core.isToolbarExpanded = false;
-    state.core.isSizeExpanded = false;
-    state.core.showQuickMenu = false;
-    state.core.showShortcuts = false;
-    state.core.lastLocationHref = window.location.href;
-    state.core.canvas.style.display = 'block';
-    state.core.toolbarHost.style.display = 'block';
-    state.core.enabled = true;
-
-    setDrawingMode(Boolean(startDrawingMode));
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onOverlayEnable');
-    }
-
-    updateToolbarState();
-    requestRender();
+    overlayLifecycle.enableOverlay(startDrawingMode);
   }
 
   function disableOverlay() {
-    if (!state.core.enabled || !state.core.canvas || !state.core.toolbarHost) {
-      return;
-    }
-
-    setDrawingMode(false);
-    clearSelection({ reason: 'overlay-disabled', render: false });
-    state.core.isDraggingLauncher = false;
-    state.core.launcherPointerId = null;
-    state.core.suppressNextLauncherClick = false;
-    forceReleaseTemporaryPassthrough();
-    state.core.canvas.style.display = 'none';
-    state.core.toolbarHost.style.display = 'none';
-    state.core.enabled = false;
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onOverlayDisable');
-    }
-
-    updateToolbarState();
+    overlayLifecycle.disableOverlay();
   }
 
   function toggleDrawingMode() {
-    if (!state.core.enabled) {
-      return false;
-    }
-
-    setDrawingMode(!state.core.isDrawingMode);
-    return state.core.isDrawingMode;
+    return modeRuntime.toggleDrawingMode();
   }
 
   const runtimeApi = {
