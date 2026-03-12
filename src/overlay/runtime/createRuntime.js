@@ -1,7 +1,7 @@
 import { getIconMarkup, ICON_KEYS } from '../../shared/iconCatalog.js';
 import { MESSAGE_TYPES } from '../../shared/messages.js';
 import { PLUGIN_IDS } from '../../shared/pluginIds.js';
-import { createRuntimeState, MAX_HISTORY_ENTRIES } from './state.js';
+import { createRuntimeState } from './state.js';
 import {
   cloneStrokes,
   getCanvasPoint as getCanvasPointForCanvas,
@@ -15,6 +15,8 @@ import {
   didPageContextChange
 } from './sharedHelpers.js';
 import { createPluginRuntime } from './pluginRuntime.js';
+import { createSceneRuntime } from './sceneRuntime.js';
+import { createRenderRuntime } from './renderRuntime.js';
 
 export function createBbrushRuntime(featureRecords = []) {
   const state = createRuntimeState();
@@ -46,49 +48,6 @@ export function createBbrushRuntime(featureRecords = []) {
     }
 
     return iconMarkup;
-  }
-
-  function getSceneForMode(mode) {
-    return mode === 'whiteboard' ? state.shared.whiteboardScene : state.shared.pageScene;
-  }
-
-  function getActiveScene() {
-    return getSceneForMode(state.core.canvasMode);
-  }
-
-  function ensureHistoryInitialized(scene = getActiveScene()) {
-    if (scene.history.length === 0) {
-      scene.history.push(cloneStrokes(scene.strokes));
-    }
-  }
-
-  function pushHistorySnapshot(scene = getActiveScene()) {
-    ensureHistoryInitialized(scene);
-    scene.history.push(cloneStrokes(scene.strokes));
-
-    if (scene.history.length > MAX_HISTORY_ENTRIES) {
-      scene.history.shift();
-    }
-  }
-
-  function recomputeNextEntryId() {
-    let maxId = 0;
-
-    for (const scene of [state.shared.pageScene, state.shared.whiteboardScene]) {
-      for (const entry of scene.strokes) {
-        if (typeof entry.id === 'number' && entry.id > maxId) {
-          maxId = entry.id;
-        }
-      }
-    }
-
-    state.shared.nextEntryId = maxId + 1;
-  }
-
-  function generateEntryId() {
-    const entryId = state.shared.nextEntryId;
-    state.shared.nextEntryId += 1;
-    return entryId;
   }
 
   function getCanvasPoint(event) {
@@ -168,6 +127,51 @@ export function createBbrushRuntime(featureRecords = []) {
     logPluginError
   });
   const { plugins } = pluginRuntime;
+  const sceneRuntime = createSceneRuntime({
+    state,
+    cloneStrokes,
+    getPlugins() {
+      return plugins;
+    },
+    callPluginHook,
+    notifySceneChanged,
+    requestRender
+  });
+  const renderRuntime = createRenderRuntime({
+    state,
+    getPlugins() {
+      return plugins;
+    },
+    getActiveScene,
+    getEntryOwner,
+    getActiveToolPlugin,
+    getPluginContext,
+    callPluginHook
+  });
+
+  function getSceneForMode(mode) {
+    return sceneRuntime.getSceneForMode(mode);
+  }
+
+  function getActiveScene() {
+    return sceneRuntime.getActiveScene();
+  }
+
+  function ensureHistoryInitialized(scene = getActiveScene()) {
+    sceneRuntime.ensureHistoryInitialized(scene);
+  }
+
+  function pushHistorySnapshot(scene = getActiveScene()) {
+    sceneRuntime.pushHistorySnapshot(scene);
+  }
+
+  function recomputeNextEntryId() {
+    sceneRuntime.recomputeNextEntryId();
+  }
+
+  function generateEntryId() {
+    return sceneRuntime.generateEntryId();
+  }
 
   function getPlugin(pluginId) {
     return pluginRuntime.getPlugin(pluginId);
@@ -206,7 +210,7 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function requestRender() {
-    replayStrokes();
+    renderRuntime.requestRender();
   }
 
   function getActiveSizeConfig() {
@@ -250,26 +254,7 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function updateCanvasCursor(pointerPoint) {
-    if (!state.core.canvas) {
-      return;
-    }
-
-    if (!state.core.enabled || !state.core.isDrawingMode) {
-      state.core.canvas.style.cursor = 'crosshair';
-      return;
-    }
-
-    const activePlugin = getActiveToolPlugin();
-    if (!activePlugin || typeof activePlugin.getCanvasCursor !== 'function') {
-      state.core.canvas.style.cursor = 'crosshair';
-      return;
-    }
-
-    const nextCursor = activePlugin.getCanvasCursor(
-      getPluginContext(activePlugin.id),
-      pointerPoint || null
-    );
-    state.core.canvas.style.cursor = nextCursor || 'crosshair';
+    renderRuntime.updateCanvasCursor(pointerPoint);
   }
 
   function updateOverlayInteractionState() {
@@ -520,80 +505,11 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function undoLastAction() {
-    const scene = getActiveScene();
-    ensureHistoryInitialized(scene);
-
-    if (scene.history.length <= 1) {
-      return false;
-    }
-
-    scene.history.pop();
-    const previousSnapshot = cloneStrokes(scene.history[scene.history.length - 1]);
-    scene.strokes.length = 0;
-    scene.strokes.push(...previousSnapshot);
-    recomputeNextEntryId();
-    notifySceneChanged('undo');
-    requestRender();
-    return true;
+    return sceneRuntime.undoLastAction();
   }
 
   function clearAll() {
-    const scene = getActiveScene();
-    const hasSceneEntries = scene.strokes.length > 0;
-    let didChange = false;
-
-    if (hasSceneEntries) {
-      scene.strokes.length = 0;
-      pushHistorySnapshot(scene);
-      didChange = true;
-    }
-
-    for (const plugin of plugins) {
-      const didPluginChange = callPluginHook(plugin, 'onClearAll', {
-        canvasMode: state.core.canvasMode
-      });
-
-      if (didPluginChange) {
-        didChange = true;
-      }
-    }
-
-    if (!didChange) {
-      return false;
-    }
-
-    recomputeNextEntryId();
-    notifySceneChanged('clear');
-    requestRender();
-    return true;
-  }
-
-  function replayStrokes() {
-    if (!state.core.canvas || !state.core.context) {
-      return;
-    }
-
-    state.core.context.clearRect(0, 0, state.core.canvas.width, state.core.canvas.height);
-
-    if (state.core.canvasMode === 'whiteboard') {
-      state.core.context.save();
-      state.core.context.fillStyle = '#f8fafc';
-      state.core.context.fillRect(0, 0, state.core.canvas.width, state.core.canvas.height);
-      state.core.context.restore();
-    }
-
-    for (const entry of getActiveScene().strokes) {
-      const plugin = getEntryOwner(entry);
-      if (!plugin) {
-        continue;
-      }
-
-      callPluginHook(plugin, 'onRenderEntry', entry);
-    }
-
-    for (const plugin of plugins) {
-      callPluginHook(plugin, 'onRenderOverlay');
-    }
+    return sceneRuntime.clearAll();
   }
 
   function buildIconButton(descriptor) {
