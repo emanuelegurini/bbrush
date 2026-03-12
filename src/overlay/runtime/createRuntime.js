@@ -1473,7 +1473,9 @@ export function createBbrushRuntime(featureRecords = []) {
 
     dragHandle.addEventListener('pointerup', (event) => {
       state.core.isDraggingToolbar = false;
-      dragHandle.releasePointerCapture(event.pointerId);
+      if (dragHandle.hasPointerCapture(event.pointerId)) {
+        dragHandle.releasePointerCapture(event.pointerId);
+      }
     });
 
     annotateToggleButton.addEventListener('click', () => {
