@@ -23,29 +23,33 @@
 
 .bbrush-launcher {
   align-items: center;
-  background: linear-gradient(160deg, rgba(18, 27, 40, 0.98), rgba(8, 13, 20, 0.96));
+  background:
+    radial-gradient(circle at top right, rgba(199, 182, 255, 0.88), transparent 38%),
+    linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(255, 255, 255, 0.92));
   border: 2px solid var(--bb-accent);
-  border-radius: 999px;
+  border-radius: 24px;
   box-shadow: var(--bb-shadow-soft);
   color: var(--bb-text);
   cursor: pointer;
   display: flex;
-  font-size: 13px;
+  font-family: var(--bb-font-display);
+  font-size: 15px;
   font-weight: 700;
-  height: 44px;
+  height: 58px;
   justify-content: center;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.04em;
   padding: 0;
   position: relative;
   transition:
     transform 140ms ease,
-    filter 160ms ease;
-  width: 44px;
+    filter 160ms ease,
+    box-shadow 160ms ease;
+  width: 58px;
 }
 
 .bbrush-launcher:hover {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
+  filter: brightness(1.04);
+  transform: translateY(-2px);
 }
 
 .bbrush-launcher:active {
@@ -53,40 +57,50 @@
 }
 
 .bbrush-launcher.is-annotating {
-  background: linear-gradient(160deg, rgba(22, 34, 49, 1), rgba(10, 15, 23, 0.98));
+  background:
+    radial-gradient(circle at top right, rgba(191, 231, 125, 0.78), transparent 34%),
+    linear-gradient(145deg, rgba(246, 255, 239, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.bbrush-launcher-label {
+  color: var(--bb-ink);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.06em;
 }
 
 .bbrush-launcher-tool {
   align-items: center;
-  background: color-mix(in srgb, var(--bb-accent) 78%, #ffffff);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--bb-lime) 68%, #ffffff);
+  border: 1px solid rgba(20, 57, 46, 0.08);
   border-radius: 999px;
-  color: #0b1120;
+  box-shadow: 0 8px 12px rgba(42, 92, 63, 0.12);
+  color: var(--bb-ink);
   display: inline-flex;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
-  height: 14px;
+  height: 20px;
   justify-content: center;
   position: absolute;
-  right: -4px;
-  top: -4px;
-  width: 14px;
+  right: -6px;
+  top: -6px;
+  width: 20px;
 }
 
 .bbrush-quick-menu {
-  background: var(--bb-surface-strong);
+  background: rgba(255, 252, 246, 0.92);
   border: 1px solid var(--bb-border);
-  border-radius: 10px;
+  border-radius: 24px;
   box-shadow: var(--bb-shadow-strong);
   display: grid;
-  gap: 6px;
-  left: 0;
-  min-width: 148px;
+  gap: 8px;
+  left: 4px;
+  min-width: 188px;
   opacity: 0;
-  padding: 8px;
+  padding: 12px;
   pointer-events: none;
   position: absolute;
-  top: 52px;
+  top: 68px;
   transform: translateY(-4px);
   transition:
     opacity 140ms ease,
@@ -101,19 +115,25 @@
 }
 
 .bbrush-quick-menu button {
-  background: var(--bb-btn);
-  border: 1px solid rgba(182, 196, 214, 0.16);
-  border-radius: 7px;
+  align-items: center;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 251, 246, 0.98));
+  border: 1px solid rgba(21, 57, 47, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 10px 20px rgba(29, 70, 52, 0.08);
   color: var(--bb-text);
   cursor: pointer;
-  font-size: 11px;
+  display: flex;
+  font-size: 12px;
   font-weight: 600;
-  padding: 7px 8px;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 10px 12px;
   text-align: left;
 }
 
 .bbrush-quick-menu button:hover {
-  background: var(--bb-btn-hover);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(250, 247, 242, 1));
+  transform: translateY(-1px);
 }
 
 .bbrush-panel {
