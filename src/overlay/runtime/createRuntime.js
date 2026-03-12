@@ -1,85 +1,30 @@
 import { getIconMarkup, ICON_KEYS } from '../../shared/iconCatalog.js';
 import { MESSAGE_TYPES } from '../../shared/messages.js';
 import { PLUGIN_IDS } from '../../shared/pluginIds.js';
-
-const ANCHOR_SIZE = 10;
-const MIN_TEXT_SIZE = 10;
-const MAX_HISTORY_ENTRIES = 100;
-const STATIC_PLUGIN_MANIFEST_KEYS = new Set([
-  'id',
-  'kind',
-  'order',
-  'launcherLabel',
-  'entryTypes',
-  'usesCanvasPointerEvents',
-  'toolbarItems',
-  'quickActions',
-  'shortcutItems',
-  'keybindings'
-]);
-const DESCRIPTOR_HANDLER_KEYS = {
-  toolbarItems: ['onClick', 'getTitle', 'isActive', 'isDisabled'],
-  quickActions: ['onClick', 'getTitle', 'isActive', 'isDisabled'],
-  keybindings: ['when', 'run']
-};
-
-function sortByOrder(left, right) {
-  const leftOrder = typeof left.order === 'number' ? left.order : 0;
-  const rightOrder = typeof right.order === 'number' ? right.order : 0;
-
-  if (leftOrder !== rightOrder) {
-    return leftOrder - rightOrder;
-  }
-
-  const leftId = typeof left.id === 'string' ? left.id : '';
-  const rightId = typeof right.id === 'string' ? right.id : '';
-  return leftId.localeCompare(rightId);
-}
+import {
+  createRuntimeState,
+  ANCHOR_SIZE,
+  MIN_TEXT_SIZE,
+  MAX_HISTORY_ENTRIES,
+  STATIC_PLUGIN_MANIFEST_KEYS,
+  DESCRIPTOR_HANDLER_KEYS,
+  sortByOrder
+} from './state.js';
+import {
+  cloneStrokes,
+  getCanvasPoint as getCanvasPointForCanvas,
+  getSmoothedPoint,
+  distancePointToSegment,
+  getAnchorPoints,
+  getAnchorCursor,
+  measureTextBounds as measureTextBoundsForContext,
+  isSpaceShortcut,
+  isEditableTarget,
+  didPageContextChange
+} from './sharedHelpers.js';
 
 export function createBbrushRuntime(featureRecords = []) {
-  const state = {
-    core: {
-      enabled: false,
-      isDrawingMode: false,
-      canvasMode: 'page',
-      activeToolId: typeof PLUGIN_IDS.BRUSH === 'string' ? PLUGIN_IDS.BRUSH : 'brush',
-      canvas: null,
-      context: null,
-      toolbarHost: null,
-      toolbarShadowRoot: null,
-      toolbarElements: null,
-      isToolbarExpanded: false,
-      isSizeExpanded: false,
-      showQuickMenu: false,
-      showShortcuts: false,
-      isDraggingToolbar: false,
-      isDraggingLauncher: false,
-      dragOffsetX: 0,
-      dragOffsetY: 0,
-      launcherDragStartX: 0,
-      launcherDragStartY: 0,
-      launcherPointerId: null,
-      suppressNextLauncherClick: false,
-      isSpacePressed: false,
-      isTemporaryPassthrough: false,
-      lastLocationHref: window.location.href,
-      registeredPlugins: [],
-      toolbarButtonRecords: [],
-      quickActionRecords: [],
-      shortcutLines: [],
-      keybindingRecords: [],
-      entryTypeOwners: {}
-    },
-    shared: {
-      pageScene: { strokes: [], history: [] },
-      whiteboardScene: { strokes: [], history: [] },
-      nextEntryId: 1,
-      brushColor: '#ff00bb',
-      penSize: 4,
-      textSize: 18
-    },
-    plugins: {}
-  };
+  const state = createRuntimeState();
 
   const plugins = [];
   const pluginsById = new Map();
@@ -133,10 +78,6 @@ export function createBbrushRuntime(featureRecords = []) {
     return getSceneForMode(state.core.canvasMode);
   }
 
-  function cloneStrokes(strokes) {
-    return JSON.parse(JSON.stringify(strokes));
-  }
-
   function ensureHistoryInitialized(scene = getActiveScene()) {
     if (scene.history.length === 0) {
       scene.history.push(cloneStrokes(scene.strokes));
@@ -173,130 +114,11 @@ export function createBbrushRuntime(featureRecords = []) {
   }
 
   function getCanvasPoint(event) {
-    const rect = state.core.canvas.getBoundingClientRect();
-    return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
-  }
-
-  function getSmoothedPoint(rawPoint, points) {
-    const sampleSize = 3;
-    const recentPoints = points.slice(-(sampleSize - 1));
-    const samples = [...recentPoints, rawPoint];
-    const totals = samples.reduce(
-      (accumulator, point) => {
-        return {
-          x: accumulator.x + point.x,
-          y: accumulator.y + point.y
-        };
-      },
-      { x: 0, y: 0 }
-    );
-
-    return {
-      x: totals.x / samples.length,
-      y: totals.y / samples.length
-    };
-  }
-
-  function distancePointToSegment(point, segmentStart, segmentEnd) {
-    const segX = segmentEnd.x - segmentStart.x;
-    const segY = segmentEnd.y - segmentStart.y;
-    const segLenSq = segX * segX + segY * segY;
-
-    if (segLenSq === 0) {
-      return Math.hypot(point.x - segmentStart.x, point.y - segmentStart.y);
-    }
-
-    let t = ((point.x - segmentStart.x) * segX + (point.y - segmentStart.y) * segY) / segLenSq;
-    t = Math.max(0, Math.min(1, t));
-
-    const projX = segmentStart.x + t * segX;
-    const projY = segmentStart.y + t * segY;
-    return Math.hypot(point.x - projX, point.y - projY);
-  }
-
-  function getAnchorPoints(bounds) {
-    return {
-      nw: { x: bounds.left, y: bounds.top },
-      n: { x: bounds.left + bounds.width / 2, y: bounds.top },
-      ne: { x: bounds.right, y: bounds.top },
-      e: { x: bounds.right, y: bounds.top + bounds.height / 2 },
-      se: { x: bounds.right, y: bounds.bottom },
-      s: { x: bounds.left + bounds.width / 2, y: bounds.bottom },
-      sw: { x: bounds.left, y: bounds.bottom },
-      w: { x: bounds.left, y: bounds.top + bounds.height / 2 }
-    };
-  }
-
-  function getAnchorCursor(anchor) {
-    if (anchor === 'n' || anchor === 's') {
-      return 'ns-resize';
-    }
-
-    if (anchor === 'e' || anchor === 'w') {
-      return 'ew-resize';
-    }
-
-    if (anchor === 'nw' || anchor === 'se') {
-      return 'nwse-resize';
-    }
-
-    return 'nesw-resize';
+    return getCanvasPointForCanvas(state.core.canvas, event);
   }
 
   function measureTextBounds(text, fontSize) {
-    if (!state.core.context) {
-      return { width: 0, height: fontSize };
-    }
-
-    state.core.context.font = `${fontSize}px Arial, sans-serif`;
-    const metrics = state.core.context.measureText(text);
-    const width = Math.max(1, metrics.width);
-    const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
-    const descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
-
-    return {
-      width,
-      height: Math.max(fontSize, ascent + descent)
-    };
-  }
-
-  function isSpaceShortcut(event) {
-    return event.code === 'Space' || event.key === ' ';
-  }
-
-  function isEditableTarget(target) {
-    if (!target || !(target instanceof Element)) {
-      return false;
-    }
-
-    if (target.isContentEditable) {
-      return true;
-    }
-
-    return (
-      target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'
-    );
-  }
-
-  function didPageContextChange(previousHref, nextHref) {
-    if (!previousHref || !nextHref) {
-      return false;
-    }
-
-    try {
-      const previousUrl = new URL(previousHref);
-      const nextUrl = new URL(nextHref);
-      return (
-        previousUrl.origin !== nextUrl.origin ||
-        previousUrl.pathname !== nextUrl.pathname ||
-        previousUrl.search !== nextUrl.search
-      );
-    } catch {
-      return previousHref !== nextHref;
-    }
+    return measureTextBoundsForContext(state.core.context, text, fontSize);
   }
 
   function releasePointerCapture(pointerId) {
