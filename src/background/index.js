@@ -129,11 +129,3 @@ chrome.commands.onCommand.addListener(async (command) => {
     await sendTabMessage(tabId, { type: MESSAGE_TYPES.TOGGLE_DRAWING_MODE });
   }
 });
-
-chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab || typeof tab.id !== 'number') {
-    return;
-  }
-
-  await toggleOverlayForTab(tab.id);
-});
