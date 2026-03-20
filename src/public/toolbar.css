@@ -1,17 +1,21 @@
 @import url('./design-tokens.css');
 
 :host {
-  --bb-accent: var(--bb-lavender);
-  --bb-surface: var(--bb-toolbar-surface);
-  --bb-border: var(--bb-toolbar-border);
-  --bb-text: var(--bb-toolbar-text);
-  --bb-text-muted: var(--bb-toolbar-muted);
-  --bb-btn: var(--bb-toolbar-button);
-  --bb-btn-hover: var(--bb-toolbar-button-hover);
-  --bb-btn-active: var(--bb-toolbar-button-active);
-  --bb-disabled: var(--bb-toolbar-disabled);
-  --bb-shadow-soft: var(--bb-card-shadow-soft);
-  --bb-shadow-strong: var(--bb-card-shadow);
+  --bb-accent: #bfe77d;
+  --bb-surface: linear-gradient(145deg, rgba(16, 28, 24, 0.98), rgba(9, 17, 15, 0.98));
+  --bb-border: color-mix(in srgb, var(--bb-accent) 22%, transparent);
+  --bb-text: #ebf6ee;
+  --bb-text-muted: rgba(183, 202, 192, 0.84);
+  --bb-btn: rgba(36, 58, 51, 0.9);
+  --bb-btn-hover: rgba(49, 76, 67, 0.96);
+  --bb-btn-active: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bb-accent) 36%, #243b32),
+    color-mix(in srgb, var(--bb-accent) 26%, #1d3129)
+  );
+  --bb-disabled: rgba(69, 85, 79, 0.62);
+  --bb-shadow-soft: 0 16px 28px rgba(3, 10, 8, 0.45);
+  --bb-shadow-strong: 0 20px 34px rgba(3, 10, 8, 0.56);
   color: var(--bb-text);
   font-family: var(--bb-font-body);
 }
@@ -23,14 +27,18 @@
 .bbrush-launcher {
   align-items: center;
   background:
-    radial-gradient(circle at top right, rgba(199, 182, 255, 0.42), transparent 38%),
-    linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(255, 255, 255, 0.94));
-  border: 1px solid rgba(199, 182, 255, 0.72);
-  border-radius: 22px;
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--bb-accent) 16%, transparent),
+      transparent 40%
+    ),
+    linear-gradient(145deg, #1d2f2a, #10201b 68%, #0a1512);
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 22%, transparent);
+  border-radius: 999px;
   box-shadow:
-    0 0 0 3px rgba(199, 182, 255, 0.16),
-    0 14px 24px rgba(29, 70, 52, 0.16);
-  color: var(--bb-ink);
+    0 0 0 3px color-mix(in srgb, var(--bb-accent) 16%, transparent),
+    0 14px 24px rgba(8, 18, 15, 0.36);
+  color: #f5fff4;
   cursor: pointer;
   display: flex;
   font-family: var(--bb-font-display);
@@ -51,9 +59,9 @@
 
 .bbrush-launcher:hover {
   box-shadow:
-    0 0 0 4px rgba(199, 182, 255, 0.22),
-    0 18px 28px rgba(29, 70, 52, 0.2);
-  filter: brightness(1.03);
+    0 0 0 4px color-mix(in srgb, var(--bb-accent) 24%, transparent),
+    0 18px 28px rgba(8, 18, 15, 0.42);
+  filter: brightness(1.06);
   transform: translateY(-2px);
 }
 
@@ -63,38 +71,35 @@
 
 .bbrush-launcher.is-annotating {
   background:
-    radial-gradient(circle at top right, rgba(191, 231, 125, 0.44), transparent 36%),
-    linear-gradient(145deg, rgba(247, 255, 241, 0.98), rgba(255, 255, 255, 0.94));
-  border-color: rgba(191, 231, 125, 0.8);
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--bb-accent) 34%, transparent),
+      transparent 38%
+    ),
+    linear-gradient(145deg, #274236, #1b2f28 68%, #11221c);
+  border-color: color-mix(in srgb, var(--bb-accent) 80%, transparent);
   box-shadow:
-    0 0 0 3px rgba(191, 231, 125, 0.18),
-    0 14px 24px rgba(29, 70, 52, 0.16);
+    0 0 0 3px color-mix(in srgb, var(--bb-accent) 20%, transparent),
+    0 14px 24px rgba(8, 18, 15, 0.4);
 }
 
 .bbrush-launcher-label {
-  color: var(--bb-ink);
+  color: #f1fff0;
   display: inline-flex;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   justify-content: center;
-  letter-spacing: -0.06em;
-  width: 30px;
-}
-
-.bbrush-launcher-label svg {
-  fill: none;
-  height: 30px;
-  overflow: visible;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 5;
-  width: 30px;
+  letter-spacing: -0.08em;
+  text-shadow: 0 1px 0 rgba(5, 10, 9, 0.35);
 }
 
 .bbrush-launcher-tool {
   align-items: center;
-  background: linear-gradient(145deg, #dff6b5, #bfe77d);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bb-accent) 34%, white),
+    color-mix(in srgb, var(--bb-accent) 88%, white)
+  );
   border: 1px solid rgba(20, 57, 46, 0.12);
   border-radius: 999px;
   box-shadow: 0 8px 12px rgba(42, 92, 63, 0.18);
@@ -111,8 +116,8 @@
 }
 
 .bbrush-quick-menu {
-  background: rgba(255, 252, 246, 0.96);
-  border: 1px solid var(--bb-border);
+  background: linear-gradient(160deg, rgba(20, 34, 30, 0.98), rgba(13, 24, 21, 0.98));
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 20%, transparent);
   border-radius: 18px;
   box-shadow: var(--bb-shadow-strong);
   display: grid;
@@ -139,10 +144,10 @@
 
 .bbrush-quick-menu button {
   align-items: center;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 251, 246, 0.98));
-  border: 1px solid rgba(21, 57, 47, 0.08);
+  background: linear-gradient(145deg, rgba(40, 63, 55, 0.94), rgba(30, 49, 43, 0.98));
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 14%, transparent);
   border-radius: 14px;
-  box-shadow: 0 8px 18px rgba(29, 70, 52, 0.08);
+  box-shadow: 0 8px 18px rgba(3, 10, 8, 0.28);
   color: var(--bb-text);
   cursor: pointer;
   display: flex;
@@ -156,7 +161,7 @@
 }
 
 .bbrush-quick-menu button:hover {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(250, 247, 242, 1));
+  background: linear-gradient(145deg, rgba(52, 81, 70, 0.96), rgba(38, 62, 54, 0.98));
   transform: translateY(-1px);
 }
 
@@ -226,10 +231,10 @@
 .bbrush-toolbar-group,
 .bbrush-toolbar-style {
   align-items: center;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(252, 247, 241, 0.94));
-  border: 1px solid rgba(20, 57, 46, 0.08);
+  background: linear-gradient(145deg, rgba(30, 49, 43, 0.96), rgba(22, 38, 33, 0.98));
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 16%, transparent);
   border-radius: 16px;
-  box-shadow: 0 8px 16px rgba(29, 70, 52, 0.06);
+  box-shadow: 0 8px 16px rgba(3, 10, 8, 0.3);
   display: flex;
   flex: 0 0 auto;
   gap: 6px;
@@ -239,26 +244,30 @@
 
 .bbrush-mode-actions {
   background:
-    radial-gradient(circle at top right, rgba(191, 231, 125, 0.42), transparent 42%),
-    linear-gradient(145deg, rgba(247, 255, 241, 0.98), rgba(255, 255, 255, 0.94));
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--bb-accent) 26%, transparent),
+      transparent 46%
+    ),
+    linear-gradient(145deg, rgba(34, 57, 48, 0.96), rgba(24, 43, 36, 0.98));
 }
 
 .bbrush-toolbar-style {
   background:
-    radial-gradient(circle at top right, rgba(244, 188, 122, 0.34), transparent 42%),
-    linear-gradient(145deg, rgba(255, 251, 243, 0.96), rgba(255, 255, 255, 0.98));
+    radial-gradient(circle at top right, rgba(244, 188, 122, 0.22), transparent 46%),
+    linear-gradient(145deg, rgba(43, 49, 38, 0.96), rgba(31, 38, 30, 0.98));
 }
 
 .bbrush-tool-grid {
   background:
-    radial-gradient(circle at top right, rgba(199, 182, 255, 0.34), transparent 42%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(250, 246, 255, 0.94));
+    radial-gradient(circle at top right, rgba(199, 182, 255, 0.22), transparent 46%),
+    linear-gradient(145deg, rgba(31, 44, 50, 0.96), rgba(20, 33, 37, 0.98));
 }
 
 .bbrush-action-row {
   background:
-    radial-gradient(circle at top right, rgba(185, 211, 255, 0.34), transparent 42%),
-    linear-gradient(145deg, rgba(246, 250, 255, 0.98), rgba(255, 255, 255, 0.94));
+    radial-gradient(circle at top right, rgba(185, 211, 255, 0.2), transparent 46%),
+    linear-gradient(145deg, rgba(30, 43, 50, 0.96), rgba(20, 32, 38, 0.98));
 }
 
 .bbrush-mode-actions,
@@ -289,8 +298,8 @@
 }
 
 .bbrush-toolbar-color-field {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(20, 57, 46, 0.08);
+  background: rgba(20, 34, 30, 0.92);
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 16%, transparent);
   border-radius: 12px;
   display: flex;
   flex: 0 0 auto;
@@ -318,8 +327,8 @@
 
 .bbrush-toolbar-size-shell {
   align-items: center;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(20, 57, 46, 0.08);
+  background: rgba(20, 34, 30, 0.92);
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 16%, transparent);
   border-radius: 12px;
   display: flex;
   flex: 0 0 auto;
@@ -331,6 +340,10 @@
 
 .bbrush-toolbar-size {
   align-items: center;
+  background: rgba(15, 26, 23, 0.98);
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 18%, transparent);
+  border-radius: 10px;
+  box-shadow: 0 12px 22px rgba(2, 9, 7, 0.45);
   display: flex;
   gap: 6px;
   max-width: 0;
@@ -353,7 +366,7 @@
 }
 
 .bbrush-toolbar-size span {
-  color: rgba(20, 57, 46, 0.78);
+  color: rgba(221, 238, 229, 0.88);
   font-size: 10px;
   font-weight: 600;
 }
@@ -365,7 +378,7 @@
 .bbrush-toolbar button {
   align-items: center;
   background: var(--bb-btn);
-  border: 1px solid rgba(20, 57, 46, 0.08);
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 16%, transparent);
   border-radius: 12px;
   color: var(--bb-text);
   cursor: pointer;
@@ -415,7 +428,7 @@
 .bbrush-toolbar input:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px rgba(191, 231, 125, 0.36),
+    0 0 0 3px color-mix(in srgb, var(--bb-accent) 36%, transparent),
     0 10px 18px rgba(29, 70, 52, 0.14);
 }
 
@@ -425,13 +438,18 @@
 }
 
 .bbrush-toolbar [data-role='annotate-toggle'] {
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(47, 122, 84, 0.18);
-  color: var(--bb-forest);
+  background: linear-gradient(145deg, rgba(53, 88, 71, 0.96), rgba(37, 63, 52, 0.98));
+  border-color: color-mix(in srgb, var(--bb-accent) 28%, transparent);
+  color: #e7f9dc;
 }
 
 .bbrush-toolbar [data-role='annotate-toggle'].is-active {
-  background: color-mix(in srgb, var(--bb-lime) 50%, white);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bb-accent) 62%, #243b32),
+    color-mix(in srgb, var(--bb-accent) 52%, #1d3129)
+  );
+  color: var(--bb-text);
 }
 
 .bbrush-toolbar button:disabled,
@@ -450,11 +468,11 @@
 
 .bbrush-shortcuts {
   background:
-    radial-gradient(circle at top right, rgba(185, 211, 255, 0.28), transparent 36%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(250, 247, 255, 0.94));
-  border: 1px solid rgba(20, 57, 46, 0.08);
+    radial-gradient(circle at top right, rgba(185, 211, 255, 0.22), transparent 36%),
+    linear-gradient(145deg, rgba(21, 34, 39, 0.98), rgba(13, 22, 26, 0.98));
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 16%, transparent);
   border-radius: 18px;
-  box-shadow: 0 14px 24px rgba(29, 70, 52, 0.12);
+  box-shadow: 0 14px 24px rgba(2, 9, 7, 0.5);
   color: var(--bb-text-muted);
   display: none;
   gap: 8px;
@@ -486,11 +504,11 @@
 }
 
 .bbrush-shortcuts span {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(20, 57, 46, 0.08);
+  background: rgba(33, 51, 45, 0.94);
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 14%, transparent);
   border-radius: 12px;
-  box-shadow: 0 6px 14px rgba(29, 70, 52, 0.06);
-  color: rgba(20, 57, 46, 0.78);
+  box-shadow: 0 6px 14px rgba(2, 9, 7, 0.28);
+  color: rgba(227, 242, 234, 0.86);
   display: inline-flex;
   font-size: 10px;
   font-weight: 600;

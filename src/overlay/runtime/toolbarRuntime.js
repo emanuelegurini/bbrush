@@ -88,6 +88,10 @@ export function createToolbarRuntime({
     const { toolbarElements } = state.core;
     const sizeConfig = getActiveSizeConfig();
 
+    if (state.core.toolbarHost) {
+      state.core.toolbarHost.style.setProperty('--bb-accent', state.shared.brushColor);
+    }
+
     toolbarElements.quickMenu.classList.toggle('is-open', state.core.showQuickMenu);
     toolbarElements.quickMenu.hidden = !state.core.showQuickMenu;
     toolbarElements.panel.classList.toggle('is-open', state.core.isToolbarExpanded);
@@ -251,13 +255,7 @@ export function createToolbarRuntime({
     shadowRoot.innerHTML = `
         <div class="bbrush-launcher-wrap">
           <button class="bbrush-launcher" data-role="launcher" title="Open bbrush panel">
-            <span class="bbrush-launcher-label" aria-hidden="true">
-              <svg viewBox="0 0 72 72" focusable="false">
-                <path d="M14 18c6 5 10 12 13 25 1 5 3 8 6 8 3 0 5-3 5-7V18" />
-                <path d="M38 18c0-9 6-14 14-14 7 0 12 5 12 11 0 8-7 12-14 16-5 3-10 6-10 11" />
-                <path d="M41 39c10 1 21 5 21 15 0 8-8 13-19 13-10 0-17-3-17-9 0-8 10-11 29-11 7 0 13 2 18 6" />
-              </svg>
-            </span>
+            <span class="bbrush-launcher-label">BB</span>
             <span class="bbrush-launcher-tool" data-role="launcher-tool">P</span>
           </button>
           <div class="bbrush-quick-menu" data-role="quick-menu" hidden></div>
