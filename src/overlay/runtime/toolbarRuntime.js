@@ -390,7 +390,8 @@ export function createToolbarRuntime({
     });
 
     toolbarBar.addEventListener('pointerdown', (event) => {
-      if (event.target.closest('button, input, label')) {
+      const target = event.target;
+      if (target instanceof Element && target.closest('button, input, label')) {
         return;
       }
 
