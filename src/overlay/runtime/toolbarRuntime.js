@@ -254,9 +254,9 @@ export function createToolbarRuntime({
     const shadowRoot = host.attachShadow({ mode: 'open' });
     shadowRoot.innerHTML = `
         <div class="bbrush-launcher-wrap">
-          <button class="bbrush-launcher" data-role="launcher" title="Open bbrush panel">
-            <span class="bbrush-launcher-label">BB</span>
-            <span class="bbrush-launcher-tool" data-role="launcher-tool">P</span>
+          <button class="bbrush-launcher" data-role="launcher" title="Open bbrush panel" aria-label="Open bbrush panel">
+            <span class="bbrush-launcher-label" aria-hidden="true">BB</span>
+            <span class="bbrush-launcher-tool" data-role="launcher-tool" aria-hidden="true">P</span>
           </button>
           <div class="bbrush-quick-menu" data-role="quick-menu" hidden></div>
         </div>
