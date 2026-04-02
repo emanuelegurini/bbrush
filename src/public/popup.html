@@ -4,41 +4,63 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bbrush</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        min-width: 220px;
-        padding: 12px;
-      }
-
-      h1 {
-        font-size: 14px;
-        margin: 0 0 8px;
-      }
-
-      p {
-        color: #555;
-        font-size: 12px;
-        margin: 0 0 12px;
-      }
-
-      button {
-        background: #1762a6;
-        border: none;
-        border-radius: 6px;
-        color: #fff;
-        cursor: pointer;
-        font-size: 12px;
-        padding: 8px 10px;
-        width: 100%;
-      }
-    </style>
+    <link rel="stylesheet" href="./popup.css" />
   </head>
-  <body>
-    <h1>bbrush</h1>
-    <p id="status">Ready for this tab.</p>
-    <button id="toggle-overlay">Activate on this tab</button>
+  <body class="popup-shell" data-state="ready">
+    <div class="popup-app">
+      <header class="popup-header">
+        <div class="popup-badge" aria-hidden="true">BB</div>
+        <div class="popup-heading">
+          <span class="popup-kicker">bbrush overlay</span>
+          <p class="popup-date">Pastel dashboard for this tab</p>
+        </div>
+      </header>
+
+      <section class="popup-hero" aria-labelledby="status-title">
+        <div class="popup-hero-copy">
+          <span class="popup-pill" id="state-chip">Ready</span>
+          <h1 id="status-title">Ready for this tab</h1>
+          <p id="status-copy">
+            Turn on the overlay to start drawing, highlighting, and switching scenes.
+          </p>
+        </div>
+        <div class="popup-hero-art" aria-hidden="true">
+          <span class="popup-orb popup-orb-lavender"></span>
+          <span class="popup-orb popup-orb-sage"></span>
+          <span class="popup-orb popup-orb-apricot"></span>
+        </div>
+      </section>
+
+      <section class="popup-card-grid" aria-label="Quick references">
+        <article class="popup-mini-card popup-mini-card-sage">
+          <span class="popup-mini-label">Overlay</span>
+          <strong id="overlay-mode">Inactive</strong>
+          <small id="overlay-hint">Available on normal pages</small>
+        </article>
+        <article class="popup-mini-card popup-mini-card-lavender">
+          <span class="popup-mini-label">Shortcut</span>
+          <strong>Alt + D</strong>
+          <small>Toggle annotate</small>
+        </article>
+        <article class="popup-mini-card popup-mini-card-apricot">
+          <span class="popup-mini-label">Panel</span>
+          <strong>Alt + Shift + B</strong>
+          <small>Open toolbar</small>
+        </article>
+      </section>
+
+      <button id="toggle-overlay" class="popup-primary">Activate on this tab</button>
+
+      <section class="popup-support" aria-label="Status note">
+        <div class="popup-support-head">
+          <span class="popup-support-pill">Current tab</span>
+          <span class="popup-support-pill popup-support-pill-muted">Chrome extension</span>
+        </div>
+        <p id="status-note">
+          Best on regular webpages. Chrome system pages and stores are blocked by the browser.
+        </p>
+      </section>
+    </div>
     <script type="module" src="./popup.js"></script>
   </body>
 </html>

@@ -43,6 +43,12 @@ export function createModeRuntime({
       clearSelection({ reason: 'drawing-mode-disabled', render: false });
       state.core.isSpacePressed = false;
       state.core.isTemporaryPassthrough = false;
+
+      // Exiting annotation from whiteboard must restore page visibility.
+      if (state.core.canvasMode === 'whiteboard') {
+        setCanvasMode('page', { autoEnableDrawing: false });
+      }
+
       requestRender();
     }
 

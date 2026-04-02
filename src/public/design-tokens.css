@@ -1,0 +1,39 @@
+:root,
+:host {
+  --bb-font-display: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
+  --bb-font-body: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
+  --bb-canvas: #f7f3ec;
+  --bb-paper: #fffdf8;
+  --bb-ink: #14392e;
+  --bb-ink-soft: #2f5a4a;
+  --bb-forest: #2f7a54;
+  --bb-lime: #bfe77d;
+  --bb-lavender: #c7b6ff;
+  --bb-apricot: #f4bc7a;
+  --bb-sky: #b9d3ff;
+  --bb-sage: #b8dcc0;
+  --bb-rose: #f2bebd;
+  --bb-card-shadow: 0 16px 34px rgba(29, 70, 52, 0.14);
+  --bb-card-shadow-soft: 0 10px 24px rgba(29, 70, 52, 0.1);
+  --bb-ring: rgba(126, 176, 110, 0.34);
+  --bb-outline: rgba(24, 61, 49, 0.12);
+  --bb-outline-strong: rgba(24, 61, 49, 0.22);
+  --bb-toolbar-surface: rgba(255, 252, 245, 0.96);
+  --bb-toolbar-card: rgba(255, 255, 255, 0.88);
+  --bb-toolbar-card-strong: rgba(255, 255, 255, 0.98);
+  --bb-toolbar-text: var(--bb-ink);
+  --bb-toolbar-muted: rgba(20, 57, 46, 0.62);
+  --bb-toolbar-border: var(--bb-outline);
+  --bb-toolbar-button: rgba(255, 255, 255, 0.92);
+  --bb-toolbar-button-hover: rgba(255, 255, 255, 1);
+  --bb-toolbar-button-active: color-mix(in srgb, var(--bb-lavender) 50%, white);
+  --bb-toolbar-disabled: rgba(195, 204, 198, 0.72);
+}
+
+@font-face {
+  font-display: swap;
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 100 800;
+  src: url('./fonts/Sora-Variable.woff2') format('woff2-variations');
+}

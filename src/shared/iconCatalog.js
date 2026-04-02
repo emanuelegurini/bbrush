@@ -16,81 +16,88 @@ export const ICON_KEYS = Object.freeze({
 export const ICONS = Object.freeze({
   [ICON_KEYS.TOOL_BRUSH]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 20l4.5-1.2L19 8.3a1.9 1.9 0 0 0 0-2.7l-.6-.6a1.9 1.9 0 0 0-2.7 0L5.2 15.5z" />
-        <path d="M13.5 6.5l4 4" />
+        <path d="M14.5 4.5l5 5" />
+        <path d="M6.5 12.5l5-5 5 5-5 5H6l.5-5z" />
+        <path d="M6 17.5c-.8.3-1.6 1-2 2.5" />
       </svg>
     `,
   [ICON_KEYS.TOOL_ERASER]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M7 16l6-8 6 6-6 8H7z" />
-        <path d="M4 20h16" />
+        <path d="M7 15.5l5.8-5.8a2 2 0 0 1 2.8 0l3.8 3.8a2 2 0 0 1 0 2.8l-3.2 3.2H10a3 3 0 0 1-2.1-.9l-2.1-2.1a.9.9 0 0 1 0-1.3z" />
+        <path d="M13.5 19.5H21" />
       </svg>
     `,
   [ICON_KEYS.TOOL_ARROW]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 20L20 4" />
-        <path d="M11 4h9v9" />
+        <path d="M5 19L19 5" />
+        <path d="M9 5h10v10" />
       </svg>
     `,
   [ICON_KEYS.TOOL_RECT]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="5" y="5" width="14" height="14" rx="1" />
+        <rect x="4.5" y="5.5" width="15" height="13" rx="3" />
       </svg>
     `,
   [ICON_KEYS.TOOL_TEXT]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5 6h14" />
         <path d="M12 6v12" />
-        <path d="M8 18h8" />
+        <path d="M9 18h6" />
       </svg>
     `,
   [ICON_KEYS.TOOL_HIGHLIGHT]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6 16l5-5 4 4-5 5H6z" />
-        <path d="M13 9l2-2 3 3-2 2" />
-        <path d="M4 20h10" />
+        <path d="M14 4l6 6" />
+        <path d="M5 13.5l6.5-6.5 5.5 5.5L10.5 19H5z" />
+        <path d="M4 20h11" />
       </svg>
     `,
   [ICON_KEYS.ACTION_UNDO]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M9 8L5 12l4 4" />
-        <path d="M6 12h7a6 6 0 1 1 0 12" transform="translate(0 -6)" />
+        <path d="M9 14L4 9l5-5" />
+        <path d="M20 20a8 8 0 0 0-8-8H4" />
       </svg>
     `,
   [ICON_KEYS.ACTION_CLEAR]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M5 7h14" />
+        <path d="M4 7h16" />
         <path d="M9 7V5h6v2" />
-        <path d="M8 7l1 12h6l1-12" />
+        <path d="M7 7l1 12h8l1-12" />
+        <path d="M10 11v5" />
+        <path d="M14 11v5" />
       </svg>
     `,
   [ICON_KEYS.UI_SHORTCUTS]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3" y="6" width="18" height="12" rx="2" />
-        <path d="M7 10h2" />
-        <path d="M11 10h2" />
-        <path d="M15 10h2" />
+        <rect x="3.5" y="6" width="17" height="12" rx="2.5" />
+        <path d="M7 10h1" />
+        <path d="M11 10h1" />
+        <path d="M15 10h1" />
         <path d="M7 14h10" />
       </svg>
     `,
   [ICON_KEYS.MODE_WHITEBOARD]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="4" y="5" width="16" height="12" rx="2" />
-        <path d="M8 19h8" />
+        <rect x="4" y="4.5" width="16" height="11.5" rx="2.5" />
+        <path d="M12 16v3.5" />
+        <path d="M8 20h8" />
       </svg>
     `,
   [ICON_KEYS.SHELL_ANNOTATE_TOGGLE]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3v8" />
-        <path d="M7.8 5.7A8.5 8.5 0 1 0 16.2 5.7" />
+        <path d="M12 19H5" />
+        <path d="M16.5 3.5l4 4" />
+        <path d="M7.5 15.5l8-8 4 4-8 8H7.5z" />
       </svg>
     `,
   [ICON_KEYS.SHELL_SIZE_TOGGLE]: `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 8h10" />
-        <circle cx="16" cy="8" r="2" />
-        <path d="M4 16h6" />
-        <circle cx="12" cy="16" r="2" />
+        <path d="M4 7h8" />
+        <path d="M16 7h4" />
+        <path d="M4 17h4" />
+        <path d="M12 17h8" />
+        <circle cx="14" cy="7" r="2" />
+        <circle cx="10" cy="17" r="2" />
       </svg>
     `
 });
